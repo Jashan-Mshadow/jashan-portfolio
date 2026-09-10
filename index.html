@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,38 +8,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script>
+/* dark is the default; only an explicit stored choice overrides it */
+(function(){try{var s=localStorage.getItem('jm-theme');
+document.documentElement.setAttribute('data-theme', s==='light'?'light':'dark');}catch(e){}})();
+</script>
 <style>
 :root{
-  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#F8FAFC;
-  --ink:#131820; --muted:#5B6672; --line:#D7DEE6; --line-soft:#E6EBF1;
-  --copper:#A85F27; --copper-soft:rgba(168,95,39,.10);
-  --signal:#0D7C86; --signal-soft:rgba(13,124,134,.10);
-  --trace:rgba(168,95,39,.30); --grid:rgba(19,24,32,.045);
-  --shadow:0 1px 2px rgba(19,24,32,.05), 0 8px 24px rgba(19,24,32,.06);
-  --r:10px;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0B0E13; --surface:#12171F; --surface-2:#161C26;
-    --ink:#E7ECF3; --muted:#8B95A4; --line:#212936; --line-soft:#1A212B;
-    --copper:#DB934F; --copper-soft:rgba(219,147,79,.12);
-    --signal:#33CBD8; --signal-soft:rgba(51,203,216,.12);
-    --trace:rgba(219,147,79,.32); --grid:rgba(231,236,243,.05);
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35);
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0B0E13; --surface:#12171F; --surface-2:#161C26;
+  --bg:#0B0E13; --surface:#12171F; --surface-2:#161C26; --glass:rgba(22,28,38,.62);
   --ink:#E7ECF3; --muted:#8B95A4; --line:#212936; --line-soft:#1A212B;
   --copper:#DB934F; --copper-soft:rgba(219,147,79,.12);
   --signal:#33CBD8; --signal-soft:rgba(51,203,216,.12);
   --trace:rgba(219,147,79,.32); --grid:rgba(231,236,243,.05);
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --r:12px;
+}
+:root[data-theme="light"]{
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#F8FAFC; --glass:rgba(255,255,255,.68);
+  --ink:#131820; --muted:#5B6672; --line:#D7DEE6; --line-soft:#E6EBF1;
+  --copper:#A85F27; --copper-soft:rgba(168,95,39,.10);
+  --signal:#0D7C86; --signal-soft:rgba(13,124,134,.10);
+  --trace:rgba(168,95,39,.30); --grid:rgba(19,24,32,.045);
+  --shadow:0 1px 2px rgba(19,24,32,.05), 0 10px 28px rgba(19,24,32,.07);
 }
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
 body{
   margin:0; background:var(--bg); color:var(--ink);
   font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -49,80 +43,111 @@ body{
 }
 img,video{max-width:100%;display:block}
 a{color:inherit}
-
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:3px}
 .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+[id]{scroll-margin-top:78px}
 
-/* ---------- board rail: the copper spine ---------- */
-.board{position:relative}
-.rail{position:absolute;left:-38px;top:0;bottom:0;width:24px;pointer-events:none}
-@media (max-width:900px){ .rail{display:none} }
-.rail svg{height:100%;width:100%}
-
-/* ---------- top bar ---------- */
-.topbar{
-  position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line-soft);
+/* ================= INTRO: the delivery ================= */
+#intro{
+  position:fixed;inset:0;z-index:200;background:var(--bg);
+  display:grid;place-items:center;overflow:hidden;
 }
-.topbar .wrap{display:flex;align-items:center;gap:20px;height:56px}
-.mark{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--copper);font-weight:500}
+#intro.done{opacity:0;pointer-events:none;transition:opacity .5s ease}
+.intro-stage{position:relative;width:min(560px,86vw);height:190px}
+.intro-road{
+  position:absolute;left:0;right:0;bottom:52px;height:1px;
+  background:repeating-linear-gradient(90deg,var(--line) 0 10px,transparent 10px 22px);
+}
+.intro-name{
+  position:absolute;left:0;right:0;bottom:74px;text-align:center;
+  font-family:Archivo,sans-serif;font-weight:800;letter-spacing:-.03em;
+  font-size:clamp(30px,7vw,54px);opacity:0;transform:translateY(-14px) scale(.94);
+}
+.intro-car{position:absolute;bottom:44px;left:-130px;width:112px}
+.intro-skip{
+  position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);background:none;border:0;cursor:pointer;
+}
+.intro-skip:hover{color:var(--copper)}
+@keyframes drive-in{ from{transform:translateX(0)} to{transform:translateX(calc(50vw - 50% + 0px))} }
+@keyframes drop{ 0%{opacity:0;transform:translateY(-14px) scale(.94)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes drive-off{ from{transform:translateX(var(--stop))} to{transform:translateX(140vw)} }
+.wheel{transform-origin:center;animation:spin .45s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ================= top bar ================= */
+.topbar{
+  position:sticky;top:0;z-index:50;background:var(--glass);
+  backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
+  border-bottom:1px solid var(--line-soft);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.mark{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--copper);font-weight:500;white-space:nowrap}
 .topnav{margin-left:auto;display:flex;gap:22px;align-items:center}
 .topnav a{
   font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--muted);text-decoration:none;padding:4px 0;border-bottom:1px solid transparent;
+  text-transform:uppercase;color:var(--muted);text-decoration:none;padding:4px 0;
+  border-bottom:1px solid transparent;transition:color .16s,border-color .16s;
 }
 .topnav a:hover{color:var(--ink);border-bottom-color:var(--copper)}
-@media (max-width:720px){ .topnav a[data-opt]{display:none} }
+@media (max-width:760px){ .topnav a[data-opt]{display:none} .topnav{gap:16px} }
 .tbtn{
-  background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
-  width:30px;height:30px;display:grid;place-items:center;cursor:pointer;font-size:13px;
+  background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;
+  width:32px;height:32px;display:grid;place-items:center;cursor:pointer;font-size:13px;
+  transition:color .16s,border-color .16s,transform .16s;
 }
-.tbtn:hover{color:var(--ink);border-color:var(--copper)}
-:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:3px}
+.tbtn:hover{color:var(--copper);border-color:var(--copper);transform:rotate(-18deg)}
 
-/* ---------- section scaffolding ---------- */
-section{padding:64px 0 8px}
+/* ================= reveal ================= */
+.js .rv{opacity:0;transform:translateY(14px)}
+.js .rv.in{opacity:1;transform:none;transition:opacity .6s cubic-bezier(.2,.7,.3,1),transform .6s cubic-bezier(.2,.7,.3,1)}
+
+/* ================= sections ================= */
+section{padding:66px 0 8px}
 .shead{display:flex;align-items:baseline;gap:14px;margin-bottom:26px}
 .sref{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--copper);letter-spacing:.1em}
-.shead h2{
-  font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(20px,2.6vw,26px);
-  margin:0;letter-spacing:-.015em;text-wrap:balance;
-}
+.shead h2{font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(20px,2.6vw,26px);margin:0;letter-spacing:-.015em;text-wrap:balance}
 .shead .dash{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 12px)}
 
-/* ---------- hero ---------- */
-.hero{padding-top:60px}
+/* ================= board rail ================= */
+.board{position:relative}
+.rail{position:absolute;left:-38px;top:0;bottom:0;width:24px;pointer-events:none}
+@media (max-width:920px){ .rail{display:none} }
+.rail svg{height:100%;width:100%}
+
+/* ================= hero ================= */
+.hero{padding-top:56px}
 .eyebrow{
   font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
 }
-.led{width:7px;height:7px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
-h1{
-  font-family:Archivo,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1.02;
-  font-size:clamp(44px,9vw,86px);margin:0 0 22px;text-wrap:balance;
-}
+.led{width:7px;height:7px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+h1{font-family:Archivo,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1.02;font-size:clamp(44px,9vw,86px);margin:0 0 22px;text-wrap:balance}
 .thesis{font-size:clamp(17px,2vw,20px);max-width:60ch;margin:0 0 16px}
 .thesis strong{color:var(--copper);font-weight:600}
-.sub{color:var(--muted);max-width:62ch;margin:0 0 30px}
-.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sub{color:var(--muted);max-width:62ch;margin:0 0 14px}
+.aside{
+  border-left:2px solid var(--copper);padding:2px 0 2px 14px;margin:0 0 28px;
+  color:var(--muted);font-size:15px;max-width:58ch;
+}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
 .btn{
   font-family:"IBM Plex Mono",monospace;font-size:13px;letter-spacing:.04em;text-decoration:none;
-  padding:10px 16px;border-radius:7px;border:1px solid var(--line);color:var(--ink);background:var(--surface);
-  display:inline-flex;align-items:center;gap:8px;transition:border-color .15s,transform .15s;
+  padding:11px 17px;border-radius:9px;border:1px solid var(--line);color:var(--ink);background:var(--surface);
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  transition:border-color .16s,transform .16s,box-shadow .16s;
 }
-.btn:hover{border-color:var(--copper);transform:translateY(-1px)}
-.btn.primary{background:var(--copper);border-color:var(--copper);color:#fff}
-.btn.primary:hover{filter:brightness(1.06)}
+.btn:hover{border-color:var(--copper);transform:translateY(-2px);box-shadow:var(--shadow)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn.primary{background:var(--copper);border-color:var(--copper);color:#12171F;font-weight:500}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn .ok{color:var(--signal)}
 
-/* ---------- readout panel ---------- */
-.readout{
-  border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
-  box-shadow:var(--shadow);overflow:hidden;margin-top:34px;
-}
-.readout-h{
-  display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line-soft);
-  background:var(--surface-2);font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
-}
+/* ================= readout ================= */
+.readout{border:1px solid var(--line);border-radius:var(--r);background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow);overflow:hidden;margin-top:36px}
+.readout-h{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line-soft);background:var(--surface-2);font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .row{padding:14px 16px;border-right:1px solid var(--line-soft);border-top:1px solid var(--line-soft)}
 .row:first-child{border-top:none}
@@ -130,7 +155,7 @@ h1{
 .row dt{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 .row dd{margin:0;font-size:14px;font-weight:500}
 
-/* ---------- experience ---------- */
+/* ================= experience ================= */
 .job{padding:22px 0;border-top:1px solid var(--line-soft)}
 .job:first-of-type{border-top:none}
 .job-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:4px}
@@ -139,27 +164,27 @@ h1{
 .job-meta{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);white-space:nowrap}
 .job ul{margin:10px 0 0;padding-left:0;list-style:none;display:grid;gap:7px}
 .job li{position:relative;padding-left:20px;font-size:15px;color:var(--muted)}
-.job li::before{
-  content:"";position:absolute;left:4px;top:.62em;width:7px;height:1px;background:var(--copper);
-}
+.job li::before{content:"";position:absolute;left:4px;top:.62em;width:7px;height:1px;background:var(--copper)}
 .job li b{color:var(--ink);font-weight:600}
 
-/* ---------- projects ---------- */
+/* ================= projects ================= */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
 .card{
   border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
-  overflow:hidden;display:flex;flex-direction:column;transition:border-color .18s,transform .18s;
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color .2s,transform .2s,box-shadow .2s;
 }
-.card:hover{border-color:var(--copper);transform:translateY(-2px)}
+.card:hover{border-color:var(--copper);transform:translateY(-3px);box-shadow:var(--shadow)}
 .card.feature{grid-column:1/-1}
-@media (min-width:820px){ .card.feature{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:stretch} }
+@media (min-width:840px){ .card.feature{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)} }
 .media{position:relative;background:var(--surface-2);border-bottom:1px solid var(--line-soft);aspect-ratio:16/10;overflow:hidden}
-.card.feature .media{border-bottom:none;border-right:1px solid var(--line-soft);aspect-ratio:auto;min-height:230px}
-.media img,.media video{width:100%;height:100%;object-fit:cover}
+.card.feature .media{border-bottom:none;border-right:1px solid var(--line-soft);aspect-ratio:auto;min-height:240px}
+.media img,.media video{width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.3,1)}
+.card:hover .media img{transform:scale(1.035)}
 .tag{
-  position:absolute;top:10px;left:10px;font-family:"IBM Plex Mono",monospace;font-size:10px;
-  letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:5px;
-  background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(6px);
+  position:absolute;top:10px;left:10px;z-index:2;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:6px;
+  background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   border:1px solid var(--line);color:var(--muted);
 }
 .tag.live{color:var(--signal);border-color:var(--signal);background:var(--signal-soft)}
@@ -167,45 +192,90 @@ h1{
 .body h3{font-family:Archivo,sans-serif;font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em;text-wrap:balance}
 .body p{margin:0;font-size:14.5px;color:var(--muted)}
 .parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
-.part{
-  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;
-  padding:3px 7px;border-radius:4px;background:var(--copper-soft);color:var(--copper);
-}
+.part{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;padding:3px 7px;border-radius:5px;background:var(--copper-soft);color:var(--copper)}
 
-/* ---------- skills ---------- */
+/* ================= skills ================= */
 .skills{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
-.skill{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:16px}
-.skill h3{
-  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--copper);margin:0 0 10px;font-weight:500;
-}
+.skill{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:16px;transition:border-color .18s,transform .18s}
+.skill:hover{border-color:var(--copper);transform:translateY(-2px)}
+.skill h3{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--copper);margin:0 0 10px;font-weight:500}
 .skill ul{margin:0;padding:0;list-style:none;display:grid;gap:5px}
 .skill li{font-size:14px;color:var(--muted)}
 
-/* ---------- interests: margin notes ---------- */
-.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
-.note{
-  border:1px dashed var(--line);border-radius:var(--r);padding:15px;background:transparent;
-  position:relative;
-}
+/* ================= background noise + gameboy ================= */
+.noise{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:860px){ .noise{grid-template-columns:280px 1fr} }
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;align-content:start}
+.note{border:1px dashed var(--line);border-radius:var(--r);padding:15px;transition:border-color .18s}
+.note:hover{border-color:var(--copper)}
 .note .n-k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--copper);display:block;margin-bottom:7px}
 .note p{margin:0;font-size:14px;color:var(--muted)}
 
-/* ---------- contact ---------- */
-.contact{
-  border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
-  padding:30px;text-align:center;box-shadow:var(--shadow);
+.gb{
+  border:1px solid var(--line);border-radius:14px 14px 34px 14px;background:var(--surface);
+  padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;
 }
+.gb-screen{
+  background:#9BB03A;border-radius:8px;padding:14px;border:6px solid #2A2E22;
+  min-height:118px;display:flex;align-items:center;font-family:"IBM Plex Mono",monospace;
+  font-size:12.5px;line-height:1.5;color:#20240F;
+}
+:root[data-theme="light"] .gb-screen{background:#A8BC46}
+.gb-ctl{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.dpad{display:grid;grid-template-columns:repeat(3,20px);grid-template-rows:repeat(3,20px)}
+.dpad button{
+  background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
+  cursor:pointer;padding:0;font-size:10px;line-height:1;transition:background .14s,color .14s;
+}
+.dpad button:hover{background:var(--copper);color:#12171F}
+.dpad button:active{transform:scale(.92)}
+.dpad .sp{border:0;background:none;pointer-events:none}
+.gb-ab{display:flex;gap:9px;align-items:center}
+.gb-ab button{
+  width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);
+  color:var(--copper);font-family:"IBM Plex Mono",monospace;font-size:11px;cursor:pointer;
+  transition:transform .14s,background .14s;
+}
+.gb-ab button:hover{background:var(--copper-soft)}
+.gb-ab button:active{transform:scale(.9)}
+.gb-cap{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center}
+
+/* ================= contact ================= */
+.contact{border:1px solid var(--line);border-radius:var(--r);background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:32px;text-align:center;box-shadow:var(--shadow)}
 .contact h2{font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(22px,3vw,30px);margin:0 0 10px;letter-spacing:-.02em}
-.contact p{color:var(--muted);margin:0 0 22px;max-width:46ch;margin-inline:auto}
+.contact p{color:var(--muted);margin:0 0 22px;max-width:48ch;margin-inline:auto}
 .links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-footer{
-  padding:40px 0 56px;text-align:center;font-family:"IBM Plex Mono",monospace;
-  font-size:11.5px;color:var(--muted);letter-spacing:.06em;
+footer{padding:44px 0 60px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);letter-spacing:.06em}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .js .rv{opacity:1!important;transform:none!important}
 }
 </style>
 </head>
 <body>
+
+<!-- ===== intro: an EV drops the name off ===== -->
+<div id="intro" hidden>
+  <div class="intro-stage">
+    <div class="intro-road"></div>
+    <div class="intro-name" id="introName">Jashan Multani</div>
+    <svg class="intro-car" id="introCar" viewBox="0 0 120 48" fill="none" aria-hidden="true">
+      <path d="M6 34h108" stroke="var(--line)" stroke-width="0"/>
+      <path d="M14 33 C10 33 7 30 7 26 L7 22 C7 20 8 19 10 18 L30 15 L44 6 C46 5 48 4 51 4 L76 4 C80 4 84 6 87 9 L96 17 L110 20 C113 21 114 23 114 25 L114 27 C114 30 111 33 108 33 Z"
+            fill="var(--surface-2)" stroke="var(--copper)" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M48 8 L72 8 C75 8 78 9 80 11 L86 16 L48 16 Z" fill="var(--signal-soft)" stroke="var(--signal)" stroke-width="1.2"/>
+      <path d="M44 8 L44 16 L30 16 Z" fill="var(--signal-soft)" stroke="var(--signal)" stroke-width="1.2"/>
+      <circle cx="34" cy="34" r="9" fill="var(--bg)" stroke="var(--copper)" stroke-width="1.8"/>
+      <circle cx="92" cy="34" r="9" fill="var(--bg)" stroke="var(--copper)" stroke-width="1.8"/>
+      <g class="wheel" style="transform-origin:34px 34px"><path d="M34 27v14M27 34h14" stroke="var(--copper)" stroke-width="1.2"/></g>
+      <g class="wheel" style="transform-origin:92px 34px"><path d="M92 27v14M85 34h14" stroke="var(--copper)" stroke-width="1.2"/></g>
+      <path d="M112 24h6M112 28h4" stroke="var(--signal)" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    <button class="intro-skip" id="introSkip" type="button">Skip</button>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="wrap">
@@ -214,7 +284,7 @@ footer{
       <a href="#experience">Experience</a>
       <a href="#projects">Projects</a>
       <a href="#skills" data-opt>Skills</a>
-      <a href="#signals" data-opt>Signals</a>
+      <a href="#signals" data-opt>Noise</a>
       <a href="#contact">Contact</a>
       <button class="tbtn" id="theme" aria-label="Toggle colour theme" title="Toggle theme">◐</button>
     </nav>
@@ -224,27 +294,27 @@ footer{
 <div class="wrap board">
   <div class="rail" aria-hidden="true">
     <svg viewBox="0 0 24 1000" preserveAspectRatio="none" fill="none">
-      <path d="M12 0 V90 L4 106 V300 L12 316 V520 L20 536 V760 L12 776 V1000"
-            stroke="var(--trace)" stroke-width="1.5"/>
-      <circle cx="12" cy="90"  r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
+      <path d="M12 0 V90 L4 106 V300 L12 316 V520 L20 536 V760 L12 776 V1000" stroke="var(--trace)" stroke-width="1.5"/>
+      <circle cx="12" cy="90" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
       <circle cx="12" cy="316" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
       <circle cx="20" cy="536" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
       <circle cx="12" cy="776" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
     </svg>
   </div>
 
-  <!-- ============ HERO ============ -->
+  <!-- ===== HERO ===== -->
   <section class="hero">
-    <div class="eyebrow"><span class="led"></span> Computer Engineering · University of Waterloo · 1A</div>
-    <h1>Jashan<br>Multani</h1>
-    <p class="thesis">I've wanted to build a smart house since I was a kid. Not buy one — <strong>build one</strong>. I want to yell for a Coke Zero and have it come down a chute in the ceiling. I'll probably need to build something to protect my head next.</p>
-    <p class="sub">It doesn't count as laziness if every light, lock, and sensor is running on code I wrote myself. That's still the plan, and it's more or less why I ended up here — I like the point where software stops being abstract and starts moving something physical.</p>
-    <div class="cta">
+    <div class="eyebrow rv"><span class="led"></span> Computer Engineering · University of Waterloo · 1A</div>
+    <h1 class="rv">Jashan<br>Multani</h1>
+    <p class="thesis rv">I've wanted to build a smart house since I was a kid. Not buy one — <strong>build one</strong>. I want to yell for a Coke Zero and have it come down a chute in the ceiling. I'll probably need to build something to protect my head next.</p>
+    <p class="sub rv">It doesn't count as laziness if every light, lock, and sensor is running on code I wrote myself. That's still the plan, and it's more or less why I ended up here — I like the point where software stops being abstract and starts moving something physical.</p>
+    <p class="aside rv">So far the fleet includes a bin that opens when you walk at it, an arm made of popsicle sticks, and a robot that follows a line until something rude gets in the way. The chute is still pending.</p>
+    <div class="cta rv">
       <a class="btn primary" href="#projects">See what I've built</a>
-      <a class="btn" href="mailto:jashandeepm2008@gmail.com">Get in touch</a>
+      <button class="btn" id="copyMail" type="button" data-mail="jashandeepm2008@gmail.com">Copy my email</button>
     </div>
 
-    <div class="readout">
+    <div class="readout rv">
       <div class="readout-h"><span class="led"></span> Current status</div>
       <dl class="rows">
         <div class="row"><dt>Location</dt><dd>Waterloo, Ontario</dd></div>
@@ -255,11 +325,11 @@ footer{
     </div>
   </section>
 
-  <!-- ============ EXPERIENCE ============ -->
+  <!-- ===== EXPERIENCE ===== -->
   <section id="experience">
-    <div class="shead"><span class="sref">01</span><h2>Experience</h2><span class="dash"></span></div>
+    <div class="shead rv"><span class="sref">01</span><h2>Experience</h2><span class="dash"></span></div>
 
-    <article class="job">
+    <article class="job rv">
       <div class="job-h">
         <h3>Ascendance Foundry</h3>
         <span class="job-role">Forward Deployed Engineer Intern</span>
@@ -273,7 +343,7 @@ footer{
       </ul>
     </article>
 
-    <article class="job">
+    <article class="job rv">
       <div class="job-h">
         <h3>Twin Brothers Wholesale</h3>
         <span class="job-role">Data Analyst</span>
@@ -285,7 +355,7 @@ footer{
       </ul>
     </article>
 
-    <article class="job">
+    <article class="job rv">
       <div class="job-h">
         <h3>Century 21</h3>
         <span class="job-role">Real Estate Marketing Intern</span>
@@ -298,12 +368,12 @@ footer{
     </article>
   </section>
 
-  <!-- ============ PROJECTS ============ -->
+  <!-- ===== PROJECTS ===== -->
   <section id="projects">
-    <div class="shead"><span class="sref">02</span><h2>Things I've built</h2><span class="dash"></span></div>
+    <div class="shead rv"><span class="sref">02</span><h2>Things I've built</h2><span class="dash"></span></div>
     <div class="grid">
 
-      <article class="card feature">
+      <article class="card feature rv">
         <div class="media">
           <span class="tag live">In progress</span>
           <img src="assets/img/Line_Following.jpg" alt="Line-following robot on a wheeled chassis with IR and ultrasonic sensors" loading="lazy">
@@ -312,13 +382,11 @@ footer{
           <h3>Line-Following &amp; Obstacle-Avoidance Robot</h3>
           <p>Some robots follow instructions. Others follow a line and figure things out when something gets in the way.</p>
           <p>Two IR sensors underneath track a black line and continuously correct the robot's heading — both on the line means forward, one off means turn. An ultrasonic sensor up front adds a second layer: when something appears within range, the robot abandons the line, backs up, steers around the obstacle, then hunts for the line again before carrying on.</p>
-          <div class="parts">
-            <span class="part">Arduino Uno</span><span class="part">IR sensors</span><span class="part">Ultrasonic</span><span class="part">Motor control</span><span class="part">Circuits</span>
-          </div>
+          <div class="parts"><span class="part">Arduino Uno</span><span class="part">IR sensors</span><span class="part">Ultrasonic</span><span class="part">Motor control</span><span class="part">Circuits</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">Robotics · 5th in Ontario</span>
           <video src="assets/video/ontarioskills-robot.mp4" poster="assets/img/OntarioSkills.jpg" muted loop playsinline preload="none" controls></video>
@@ -326,13 +394,11 @@ footer{
         <div class="body">
           <h3>OntarioSkills Competition Robot</h3>
           <p>Think of a warehouse worker, but made of metal, wires, and code. A motorized claw that lifts, carries, and drops boxes while navigating a set course — sensors and control logic working together so it aligns with targets and moves loads without tipping.</p>
-          <div class="parts">
-            <span class="part">C++</span><span class="part">Motor control</span><span class="part">Sensors</span><span class="part">Mechanical design</span>
-          </div>
+          <div class="parts"><span class="part">C++</span><span class="part">Motor control</span><span class="part">Sensors</span><span class="part">Mechanical design</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">Arduino build</span>
           <video src="assets/video/robot-arm.mp4" poster="assets/img/RobotArmImage1.jpg" muted loop playsinline preload="none" controls></video>
@@ -341,13 +407,11 @@ footer{
           <h3>Popsicle-Stick Robot Arm</h3>
           <p>Three servo motors, three potentiometers, and a bunch of popsicle sticks walk into a workshop… and leave as a robotic arm.</p>
           <p>Each potentiometer drives one degree of freedom — up/down, left/right, wrist rotation. The servos are positioned to balance range against stability, so it lifts small objects without straining the motors.</p>
-          <div class="parts">
-            <span class="part">Arduino Uno</span><span class="part">Servos</span><span class="part">Potentiometers</span><span class="part">Circuits</span>
-          </div>
+          <div class="parts"><span class="part">Arduino Uno</span><span class="part">Servos</span><span class="part">Potentiometers</span><span class="part">Circuits</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">Arduino build</span>
           <video src="assets/video/smart-trash-can.mp4" poster="assets/img/SmartTrashBin.jpg" muted loop playsinline preload="none" controls></video>
@@ -355,13 +419,11 @@ footer{
         <div class="body">
           <h3>Smart Trash Can</h3>
           <p>A hands-free bin that opens when you walk up to it. An ultrasonic sensor watches for distance and a servo lifts the lid through a reinforced popsicle-stick arm. The goal was to make throwing something out more hygienic and slightly cooler than a normal trash can.</p>
-          <div class="parts">
-            <span class="part">Arduino Uno</span><span class="part">Ultrasonic</span><span class="part">Servo</span><span class="part">Mechanical design</span>
-          </div>
+          <div class="parts"><span class="part">Arduino Uno</span><span class="part">Ultrasonic</span><span class="part">Servo</span><span class="part">Mechanical design</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">Circuits</span>
           <img src="assets/img/Nightlight.jpg" alt="Soldered nightlight circuit on perfboard" loading="lazy">
@@ -369,13 +431,11 @@ footer{
         <div class="body">
           <h3>Photoresistor Night Light</h3>
           <p>A simple but satisfying build — a nightlight that switches itself on when the room gets dark. A photoresistor senses the light level and the LED kicks in below threshold. Everything laid out flush on perfboard and soldered down. No breadboard spaghetti here.</p>
-          <div class="parts">
-            <span class="part">Soldering</span><span class="part">Perfboard</span><span class="part">Photoresistor</span>
-          </div>
+          <div class="parts"><span class="part">Soldering</span><span class="part">Perfboard</span><span class="part">Photoresistor</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">CNC · Manufacturing</span>
           <img src="assets/img/Asteroid.jpg" alt="Machined aluminium tag with an asteroid impact scene" loading="lazy">
@@ -383,13 +443,11 @@ footer{
         <div class="body">
           <h3>Asteroid Impact Metal Tag</h3>
           <p>My first real dive into CNC, as both designer and manufacturer. A 3&Prime;&times;2&Prime; block of aluminium became an asteroid impact scene, because I love space. I mapped the design in V-Carve, planned toolpaths across three different bits for layered depth, then cut, filed, and milled it into existence.</p>
-          <div class="parts">
-            <span class="part">CNC milling</span><span class="part">V-Carve</span><span class="part">Cutoff saw</span><span class="part">Filing</span>
-          </div>
+          <div class="parts"><span class="part">CNC milling</span><span class="part">V-Carve</span><span class="part">Cutoff saw</span><span class="part">Filing</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">Machining</span>
           <img src="assets/img/Pen1.jpg" alt="Custom machined aluminium pen with knurled grip" loading="lazy">
@@ -397,13 +455,11 @@ footer{
         <div class="body">
           <h3>Machined Aluminium Pen</h3>
           <p>This isn't just a pen — it's <em>my</em> pen. Sketches first, then an orthographic drawing at 1:2 scale (5&Prime; × 0.5&Prime;). Turned the tip from a cylindrical blank on the metal lathe, drilled a centred bore for the cartridge, cut grooves and knurling, then matched the body so the two align perfectly. Threaded both halves with a tap-and-die set so they screw together.</p>
-          <div class="parts">
-            <span class="part">Metal lathe</span><span class="part">Knurling</span><span class="part">Threading</span><span class="part">Orthographic drawing</span>
-          </div>
+          <div class="parts"><span class="part">Metal lathe</span><span class="part">Knurling</span><span class="part">Threading</span><span class="part">Orthographic drawing</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">CNC · Manufacturing</span>
           <img src="assets/img/Airplane1.jpg" alt="Aluminium mould machined with a raised airplane design" loading="lazy">
@@ -411,13 +467,11 @@ footer{
         <div class="body">
           <h3>Airplane Chocolate Mould</h3>
           <p>A 2&times;2&Prime; aluminium mould carrying a 3D airplane at two elevations — raised body, slightly lower wings. Cut, milled, and CNC-machined for depth, then used to form a plastic mould for chocolate. The whole exercise was balancing an intricate design against what the machine could actually cut.</p>
-          <div class="parts">
-            <span class="part">V-Carve</span><span class="part">CNC milling</span><span class="part">Cutoff saw</span>
-          </div>
+          <div class="parts"><span class="part">V-Carve</span><span class="part">CNC milling</span><span class="part">Cutoff saw</span></div>
         </div>
       </article>
 
-      <article class="card">
+      <article class="card rv">
         <div class="media">
           <span class="tag">CAD · 3D printing</span>
           <img src="assets/img/PokemonTrophy1.jpg" alt="3D printed Pokemon trophy on a machined base" loading="lazy">
@@ -425,56 +479,66 @@ footer{
         <div class="body">
           <h3>Pokémon Trophy</h3>
           <p>A custom trophy modelled from scratch — base built in Tinkercad, refined in SolidWorks, prepared in V-Carve. The topper was printed for detail and durability, cleaned up, and mounted for a champion-worthy finish.</p>
-          <div class="parts">
-            <span class="part">SolidWorks</span><span class="part">Tinkercad</span><span class="part">3D printing</span><span class="part">V-Carve</span>
-          </div>
+          <div class="parts"><span class="part">SolidWorks</span><span class="part">Tinkercad</span><span class="part">3D printing</span><span class="part">V-Carve</span></div>
         </div>
       </article>
 
     </div>
   </section>
 
-  <!-- ============ SKILLS ============ -->
+  <!-- ===== SKILLS ===== -->
   <section id="skills">
-    <div class="shead"><span class="sref">03</span><h2>Toolkit</h2><span class="dash"></span></div>
+    <div class="shead rv"><span class="sref">03</span><h2>Toolkit</h2><span class="dash"></span></div>
     <div class="skills">
-      <div class="skill">
-        <h3>Languages</h3>
-        <ul><li>C++</li><li>Python</li><li>TypeScript / JavaScript</li><li>Google Apps Script</li></ul>
-      </div>
-      <div class="skill">
-        <h3>Embedded</h3>
-        <ul><li>Arduino</li><li>Sensor integration</li><li>Motor control</li><li>Circuits &amp; soldering</li></ul>
-      </div>
-      <div class="skill">
-        <h3>Software</h3>
-        <ul><li>React</li><li>Pandas / NumPy</li><li>Git &amp; GitHub</li><li>Multi-agent systems</li></ul>
-      </div>
-      <div class="skill">
-        <h3>Fabrication</h3>
-        <ul><li>SolidWorks</li><li>CNC milling &amp; V-Carve</li><li>Metal lathe</li><li>3D printing</li></ul>
-      </div>
+      <div class="skill rv"><h3>Languages</h3><ul><li>C++</li><li>Python</li><li>TypeScript / JavaScript</li><li>Google Apps Script</li></ul></div>
+      <div class="skill rv"><h3>Embedded</h3><ul><li>Arduino</li><li>Sensor integration</li><li>Motor control</li><li>Circuits &amp; soldering</li></ul></div>
+      <div class="skill rv"><h3>Software</h3><ul><li>React</li><li>Pandas / NumPy</li><li>Git &amp; GitHub</li><li>Multi-agent systems</li></ul></div>
+      <div class="skill rv"><h3>Fabrication</h3><ul><li>SolidWorks</li><li>CNC milling &amp; V-Carve</li><li>Metal lathe</li><li>3D printing</li></ul></div>
     </div>
   </section>
 
-  <!-- ============ SIGNALS ============ -->
+  <!-- ===== BACKGROUND NOISE ===== -->
   <section id="signals">
-    <div class="shead"><span class="sref">04</span><h2>Background noise</h2><span class="dash"></span></div>
-    <div class="notes">
-      <div class="note"><span class="n-k">// space</span><p>I follow space and astronomy far more closely than is useful. It shows up in my work — the asteroid tag was not a coincidence.</p></div>
-      <div class="note"><span class="n-k">// swimming</span><p>In the pool most weeks. It's the one hobby that has nothing to do with a screen, which is exactly the point.</p></div>
-      <div class="note"><span class="n-k">// marvel &amp; pokémon</span><p>I'll happily talk your ear off about either, given the smallest opening. There is a trophy in the projects section as evidence.</p></div>
-      <div class="note"><span class="n-k">// deca</span><p>Two years, finishing as chapter president of a 200+ member chapter and an Ontario provincial champion in Financial Trading &amp; Decision Making.</p></div>
+    <div class="shead rv"><span class="sref">04</span><h2>Background noise</h2><span class="dash"></span></div>
+    <div class="noise">
+      <div class="gb rv">
+        <div class="gb-screen" id="gbScreen">Press ▶ to start.</div>
+        <div class="gb-ctl">
+          <div class="dpad">
+            <button class="sp" tabindex="-1" aria-hidden="true"></button>
+            <button type="button" data-gb="prev" aria-label="Previous">▲</button>
+            <button class="sp" tabindex="-1" aria-hidden="true"></button>
+            <button type="button" data-gb="prev" aria-label="Previous">◀</button>
+            <button type="button" data-gb="next" aria-label="Next">●</button>
+            <button type="button" data-gb="next" aria-label="Next">▶</button>
+            <button class="sp" tabindex="-1" aria-hidden="true"></button>
+            <button type="button" data-gb="next" aria-label="Next">▼</button>
+            <button class="sp" tabindex="-1" aria-hidden="true"></button>
+          </div>
+          <div class="gb-ab">
+            <button type="button" data-gb="next">B</button>
+            <button type="button" data-gb="next">A</button>
+          </div>
+        </div>
+        <div class="gb-cap">Facts · press any button</div>
+      </div>
+      <div class="notes">
+        <div class="note rv"><span class="n-k">// space</span><p>I follow space and astronomy far more closely than is useful. It shows up in the work — the asteroid tag was not a coincidence.</p></div>
+        <div class="note rv"><span class="n-k">// swimming</span><p>In the pool most weeks. The one hobby with no screen involved, which is exactly the point.</p></div>
+        <div class="note rv"><span class="n-k">// marvel &amp; pokémon</span><p>I'll happily talk your ear off about either, given the smallest opening. There is a trophy in the projects section as evidence.</p></div>
+        <div class="note rv"><span class="n-k">// deca</span><p>Two years, finishing as chapter president of a 200+ member chapter and an Ontario provincial champion in Financial Trading &amp; Decision Making.</p></div>
+      </div>
     </div>
   </section>
 
-  <!-- ============ CONTACT ============ -->
+  <!-- ===== CONTACT ===== -->
   <section id="contact">
-    <div class="contact">
+    <div class="contact rv">
       <h2>Let's build something</h2>
       <p>Looking for a Summer 2027 co-op in software or firmware. Always up for talking about embedded systems, or the Coke Zero chute.</p>
       <div class="links">
-        <a class="btn primary" href="mailto:jashandeepm2008@gmail.com">jashandeepm2008@gmail.com</a>
+        <a class="btn primary" href="mailto:jashandeepm2008@gmail.com">Email me</a>
+        <button class="btn" id="copyMail2" type="button" data-mail="jashandeepm2008@gmail.com">Copy address</button>
         <a class="btn" href="https://linkedin.com/in/jashanmultani" target="_blank" rel="noopener">LinkedIn</a>
         <a class="btn" href="https://github.com/Jashan-Mshadow" target="_blank" rel="noopener">GitHub</a>
       </div>
@@ -485,24 +549,105 @@ footer{
 </div>
 
 <script>
+document.documentElement.classList.add('js');
 (function(){
-  var root=document.documentElement, btn=document.getElementById('theme');
-  try{ var s=localStorage.getItem('jm-theme'); if(s){ root.setAttribute('data-theme',s); } }catch(e){}
-  btn.addEventListener('click',function(){
-    var cur=root.getAttribute('data-theme');
-    if(!cur){ cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
-    var next = cur==='dark' ? 'light' : 'dark';
+  var root=document.documentElement;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- theme ---- */
+  document.getElementById('theme').addEventListener('click',function(){
+    var next = root.getAttribute('data-theme')==='light' ? 'dark' : 'light';
     root.setAttribute('data-theme',next);
     try{ localStorage.setItem('jm-theme',next); }catch(e){}
   });
-  // play project clips on hover, pause on leave — desktop only, respects reduced motion
-  if(!matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(hover: hover)').matches){
+
+  /* ---- copy email ---- */
+  ['copyMail','copyMail2'].forEach(function(id){
+    var b=document.getElementById(id); if(!b) return;
+    b.addEventListener('click',function(){
+      var mail=b.dataset.mail, label=b.textContent;
+      var done=function(){ b.innerHTML='<span class="ok">✓</span> Copied'; setTimeout(function(){ b.textContent=label; },1600); };
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(mail).then(done,function(){ window.location.href='mailto:'+mail; }); }
+      else { window.location.href='mailto:'+mail; }
+    });
+  });
+
+  /* ---- reveal on scroll ---- */
+  var rv=[].slice.call(document.querySelectorAll('.rv'));
+  if(reduce || !('IntersectionObserver' in window)){ rv.forEach(function(el){ el.classList.add('in'); }); }
+  else{
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    },{rootMargin:'0px 0px -8% 0px',threshold:.06});
+    rv.forEach(function(el){ io.observe(el); });
+  }
+
+  /* ---- hover-to-play clips (desktop) ---- */
+  if(!reduce && matchMedia('(hover: hover)').matches){
     document.querySelectorAll('.media video').forEach(function(v){
       var m=v.parentElement;
       m.addEventListener('mouseenter',function(){ v.play().catch(function(){}); });
       m.addEventListener('mouseleave',function(){ v.pause(); });
     });
   }
+
+  /* ---- game boy ---- */
+  var facts=[
+    "FAVOURITE BUILD:\nthe bin that opens itself.\nlow stakes, high joy.",
+    "STILL UNBUILT:\nthe Coke Zero chute.\nblocked on: ceiling access.",
+    "CONTEST RECORD:\n5th in Ontario, robotics.\n2nd at Peel Skills.",
+    "SPACE FACT I WILL\nSHARE UNPROMPTED:\nask me about Europa.",
+    "LONGEST DEBUG:\nan IR sensor reading a\nshadow as a black line.",
+    "CURRENTLY:\n1A Computer Engineering\nat Waterloo.",
+    "POKEMON TEAM CORE:\nnot negotiable.\nask in person."
+  ];
+  var i=-1, screen=document.getElementById('gbScreen');
+  document.querySelectorAll('[data-gb]').forEach(function(b){
+    b.addEventListener('click',function(){
+      i = b.dataset.gb==='prev' ? (i-1+facts.length)%facts.length : (i+1)%facts.length;
+      screen.textContent=facts[i];
+      screen.style.opacity=.35; setTimeout(function(){ screen.style.opacity=1; },90);
+    });
+  });
+  screen.style.transition='opacity .18s';
+  screen.style.whiteSpace='pre-line';
+
+  /* ---- intro: EV drops the name off ---- */
+  var intro=document.getElementById('intro');
+  var seen=false; try{ seen=sessionStorage.getItem('jm-intro')==='1'; }catch(e){}
+  if(reduce || seen){ intro.remove(); return; }
+
+  intro.hidden=false;
+  document.body.style.overflow='hidden';
+  var car=document.getElementById('introCar'), name=document.getElementById('introName');
+  var stage=intro.querySelector('.intro-stage');
+  var stop = (stage.clientWidth/2) - 56 + 130;
+
+  var finish=function(){
+    if(intro.classList.contains('done')) return;
+    intro.classList.add('done');
+    document.body.style.overflow='';
+    try{ sessionStorage.setItem('jm-intro','1'); }catch(e){}
+    setTimeout(function(){ intro.remove(); },520);
+  };
+  document.getElementById('introSkip').addEventListener('click',finish);
+  intro.addEventListener('click',finish);
+  window.addEventListener('keydown',finish,{once:true});
+
+  car.style.transition='transform 1.05s cubic-bezier(.16,.8,.3,1)';
+  requestAnimationFrame(function(){ car.style.transform='translateX('+stop+'px)'; });
+
+  setTimeout(function(){
+    name.style.transition='opacity .5s ease, transform .6s cubic-bezier(.2,1.2,.4,1)';
+    name.style.opacity='1'; name.style.transform='none';
+  },1000);
+
+  setTimeout(function(){
+    car.style.transition='transform .85s cubic-bezier(.5,0,.75,.2)';
+    car.style.transform='translateX(140vh)';
+  },1600);
+
+  setTimeout(finish,2500);
 })();
 </script>
 </body>
