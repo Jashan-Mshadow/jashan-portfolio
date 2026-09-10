@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jashan Multani — Computer Engineering</title>
+<meta name="description" content="Computer Engineering at Waterloo. Firmware, embedded systems, and the layer where software starts moving something physical.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#F8FAFC;
+  --ink:#131820; --muted:#5B6672; --line:#D7DEE6; --line-soft:#E6EBF1;
+  --copper:#A85F27; --copper-soft:rgba(168,95,39,.10);
+  --signal:#0D7C86; --signal-soft:rgba(13,124,134,.10);
+  --trace:rgba(168,95,39,.30); --grid:rgba(19,24,32,.045);
+  --shadow:0 1px 2px rgba(19,24,32,.05), 0 8px 24px rgba(19,24,32,.06);
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B0E13; --surface:#12171F; --surface-2:#161C26;
+    --ink:#E7ECF3; --muted:#8B95A4; --line:#212936; --line-soft:#1A212B;
+    --copper:#DB934F; --copper-soft:rgba(219,147,79,.12);
+    --signal:#33CBD8; --signal-soft:rgba(51,203,216,.12);
+    --trace:rgba(219,147,79,.32); --grid:rgba(231,236,243,.05);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B0E13; --surface:#12171F; --surface-2:#161C26;
+  --ink:#E7ECF3; --muted:#8B95A4; --line:#212936; --line-soft:#1A212B;
+  --copper:#DB934F; --copper-soft:rgba(219,147,79,.12);
+  --signal:#33CBD8; --signal-soft:rgba(51,203,216,.12);
+  --trace:rgba(219,147,79,.32); --grid:rgba(231,236,243,.05);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+img,video{max-width:100%;display:block}
+a{color:inherit}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* ---------- board rail: the copper spine ---------- */
+.board{position:relative}
+.rail{position:absolute;left:-38px;top:0;bottom:0;width:24px;pointer-events:none}
+@media (max-width:900px){ .rail{display:none} }
+.rail svg{height:100%;width:100%}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line-soft);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:56px}
+.mark{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--copper);font-weight:500}
+.topnav{margin-left:auto;display:flex;gap:22px;align-items:center}
+.topnav a{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);text-decoration:none;padding:4px 0;border-bottom:1px solid transparent;
+}
+.topnav a:hover{color:var(--ink);border-bottom-color:var(--copper)}
+@media (max-width:720px){ .topnav a[data-opt]{display:none} }
+.tbtn{
+  background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
+  width:30px;height:30px;display:grid;place-items:center;cursor:pointer;font-size:13px;
+}
+.tbtn:hover{color:var(--ink);border-color:var(--copper)}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:3px}
+
+/* ---------- section scaffolding ---------- */
+section{padding:64px 0 8px}
+.shead{display:flex;align-items:baseline;gap:14px;margin-bottom:26px}
+.sref{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--copper);letter-spacing:.1em}
+.shead h2{
+  font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(20px,2.6vw,26px);
+  margin:0;letter-spacing:-.015em;text-wrap:balance;
+}
+.shead .dash{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 12px)}
+
+/* ---------- hero ---------- */
+.hero{padding-top:60px}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.led{width:7px;height:7px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 3px var(--signal-soft);flex:none}
+h1{
+  font-family:Archivo,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1.02;
+  font-size:clamp(44px,9vw,86px);margin:0 0 22px;text-wrap:balance;
+}
+.thesis{font-size:clamp(17px,2vw,20px);max-width:60ch;margin:0 0 16px}
+.thesis strong{color:var(--copper);font-weight:600}
+.sub{color:var(--muted);max-width:62ch;margin:0 0 30px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.btn{
+  font-family:"IBM Plex Mono",monospace;font-size:13px;letter-spacing:.04em;text-decoration:none;
+  padding:10px 16px;border-radius:7px;border:1px solid var(--line);color:var(--ink);background:var(--surface);
+  display:inline-flex;align-items:center;gap:8px;transition:border-color .15s,transform .15s;
+}
+.btn:hover{border-color:var(--copper);transform:translateY(-1px)}
+.btn.primary{background:var(--copper);border-color:var(--copper);color:#fff}
+.btn.primary:hover{filter:brightness(1.06)}
+
+/* ---------- readout panel ---------- */
+.readout{
+  border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
+  box-shadow:var(--shadow);overflow:hidden;margin-top:34px;
+}
+.readout-h{
+  display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2);font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+}
+.rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.row{padding:14px 16px;border-right:1px solid var(--line-soft);border-top:1px solid var(--line-soft)}
+.row:first-child{border-top:none}
+@media (min-width:640px){ .row{border-top:none} .row:last-child{border-right:none} }
+.row dt{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.row dd{margin:0;font-size:14px;font-weight:500}
+
+/* ---------- experience ---------- */
+.job{padding:22px 0;border-top:1px solid var(--line-soft)}
+.job:first-of-type{border-top:none}
+.job-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:4px}
+.job-h h3{font-family:Archivo,sans-serif;font-weight:700;font-size:18px;margin:0;letter-spacing:-.01em}
+.job-role{color:var(--copper);font-size:14px;font-weight:500}
+.job-meta{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);white-space:nowrap}
+.job ul{margin:10px 0 0;padding-left:0;list-style:none;display:grid;gap:7px}
+.job li{position:relative;padding-left:20px;font-size:15px;color:var(--muted)}
+.job li::before{
+  content:"";position:absolute;left:4px;top:.62em;width:7px;height:1px;background:var(--copper);
+}
+.job li b{color:var(--ink);font-weight:600}
+
+/* ---------- projects ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+.card{
+  border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
+  overflow:hidden;display:flex;flex-direction:column;transition:border-color .18s,transform .18s;
+}
+.card:hover{border-color:var(--copper);transform:translateY(-2px)}
+.card.feature{grid-column:1/-1}
+@media (min-width:820px){ .card.feature{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:stretch} }
+.media{position:relative;background:var(--surface-2);border-bottom:1px solid var(--line-soft);aspect-ratio:16/10;overflow:hidden}
+.card.feature .media{border-bottom:none;border-right:1px solid var(--line-soft);aspect-ratio:auto;min-height:230px}
+.media img,.media video{width:100%;height:100%;object-fit:cover}
+.tag{
+  position:absolute;top:10px;left:10px;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:5px;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(6px);
+  border:1px solid var(--line);color:var(--muted);
+}
+.tag.live{color:var(--signal);border-color:var(--signal);background:var(--signal-soft)}
+.body{padding:18px;display:flex;flex-direction:column;gap:10px;flex:1}
+.body h3{font-family:Archivo,sans-serif;font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.body p{margin:0;font-size:14.5px;color:var(--muted)}
+.parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
+.part{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;
+  padding:3px 7px;border-radius:4px;background:var(--copper-soft);color:var(--copper);
+}
+
+/* ---------- skills ---------- */
+.skills{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.skill{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:16px}
+.skill h3{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--copper);margin:0 0 10px;font-weight:500;
+}
+.skill ul{margin:0;padding:0;list-style:none;display:grid;gap:5px}
+.skill li{font-size:14px;color:var(--muted)}
+
+/* ---------- interests: margin notes ---------- */
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.note{
+  border:1px dashed var(--line);border-radius:var(--r);padding:15px;background:transparent;
+  position:relative;
+}
+.note .n-k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--copper);display:block;margin-bottom:7px}
+.note p{margin:0;font-size:14px;color:var(--muted)}
+
+/* ---------- contact ---------- */
+.contact{
+  border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
+  padding:30px;text-align:center;box-shadow:var(--shadow);
+}
+.contact h2{font-family:Archivo,sans-serif;font-weight:800;font-size:clamp(22px,3vw,30px);margin:0 0 10px;letter-spacing:-.02em}
+.contact p{color:var(--muted);margin:0 0 22px;max-width:46ch;margin-inline:auto}
+.links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+footer{
+  padding:40px 0 56px;text-align:center;font-family:"IBM Plex Mono",monospace;
+  font-size:11.5px;color:var(--muted);letter-spacing:.06em;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <span class="mark">JM · 0x01</span>
+    <nav class="topnav">
+      <a href="#experience">Experience</a>
+      <a href="#projects">Projects</a>
+      <a href="#skills" data-opt>Skills</a>
+      <a href="#signals" data-opt>Signals</a>
+      <a href="#contact">Contact</a>
+      <button class="tbtn" id="theme" aria-label="Toggle colour theme" title="Toggle theme">◐</button>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap board">
+  <div class="rail" aria-hidden="true">
+    <svg viewBox="0 0 24 1000" preserveAspectRatio="none" fill="none">
+      <path d="M12 0 V90 L4 106 V300 L12 316 V520 L20 536 V760 L12 776 V1000"
+            stroke="var(--trace)" stroke-width="1.5"/>
+      <circle cx="12" cy="90"  r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
+      <circle cx="12" cy="316" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
+      <circle cx="20" cy="536" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
+      <circle cx="12" cy="776" r="3.2" fill="var(--bg)" stroke="var(--trace)" stroke-width="1.5"/>
+    </svg>
+  </div>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="eyebrow"><span class="led"></span> Computer Engineering · University of Waterloo · 1A</div>
+    <h1>Jashan<br>Multani</h1>
+    <p class="thesis">I've wanted to build a smart house since I was a kid. Not buy one — <strong>build one</strong>. I want to yell for a Coke Zero and have it come down a chute in the ceiling. I'll probably need to build something to protect my head next.</p>
+    <p class="sub">It doesn't count as laziness if every light, lock, and sensor is running on code I wrote myself. That's still the plan, and it's more or less why I ended up here — I like the point where software stops being abstract and starts moving something physical.</p>
+    <div class="cta">
+      <a class="btn primary" href="#projects">See what I've built</a>
+      <a class="btn" href="mailto:jashandeepm2008@gmail.com">Get in touch</a>
+    </div>
+
+    <div class="readout">
+      <div class="readout-h"><span class="led"></span> Current status</div>
+      <dl class="rows">
+        <div class="row"><dt>Location</dt><dd>Waterloo, Ontario</dd></div>
+        <div class="row"><dt>Program</dt><dd>BASc Computer Engineering (Co-op)</dd></div>
+        <div class="row"><dt>Focus</dt><dd>Firmware &amp; embedded systems</dd></div>
+        <div class="row"><dt>Seeking</dt><dd>Summer 2027 co-op</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ============ EXPERIENCE ============ -->
+  <section id="experience">
+    <div class="shead"><span class="sref">01</span><h2>Experience</h2><span class="dash"></span></div>
+
+    <article class="job">
+      <div class="job-h">
+        <h3>Ascendance Foundry</h3>
+        <span class="job-role">Forward Deployed Engineer Intern</span>
+        <span class="job-meta">Jun – Aug 2026 · Toronto</span>
+      </div>
+      <ul>
+        <li>Built <b>CoachBot</b>, an internal Claude Code plugin that installs a team's engineering standards, tooling, and institutional knowledge with a single command — rolling out to <b>20+ fellows</b> in future cohorts.</li>
+        <li>Architected it as a <b>five-agent pipeline</b> — planning, execution, test design, test runs, and documentation each handled by a separate agent that checks the others' work.</li>
+        <li>Implemented GitHub-backed auto-updates and per-user personalization that survives version bumps, so nobody redistributes anything by hand.</li>
+        <li>Automated contract generation from a sales spreadsheet, cutting drafting <b>from an hour to under two minutes</b>.</li>
+      </ul>
+    </article>
+
+    <article class="job">
+      <div class="job-h">
+        <h3>Twin Brothers Wholesale</h3>
+        <span class="job-role">Data Analyst</span>
+        <span class="job-meta">Dec 2025 – Jan 2026 · Lansing, MI</span>
+      </div>
+      <ul>
+        <li>Analyzed consumer purchasing patterns in Python and Pandas to support inventory optimization.</li>
+        <li>Delivered demand-forecasting recommendations for operations processing <b>$30K per day</b>.</li>
+      </ul>
+    </article>
+
+    <article class="job">
+      <div class="job-h">
+        <h3>Century 21</h3>
+        <span class="job-role">Real Estate Marketing Intern</span>
+        <span class="job-meta">Jul – Aug 2025 · Brampton</span>
+      </div>
+      <ul>
+        <li>Analyzed sales and listing data in Excel to identify buyer segments; ran <b>50+ cold calls daily</b>.</li>
+        <li>Recommended prioritizing listings near schools after identifying a family-oriented buyer segment.</li>
+      </ul>
+    </article>
+  </section>
+
+  <!-- ============ PROJECTS ============ -->
+  <section id="projects">
+    <div class="shead"><span class="sref">02</span><h2>Things I've built</h2><span class="dash"></span></div>
+    <div class="grid">
+
+      <article class="card feature">
+        <div class="media">
+          <span class="tag live">In progress</span>
+          <img src="assets/img/Line_Following.jpg" alt="Line-following robot on a wheeled chassis with IR and ultrasonic sensors" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Line-Following &amp; Obstacle-Avoidance Robot</h3>
+          <p>Some robots follow instructions. Others follow a line and figure things out when something gets in the way.</p>
+          <p>Two IR sensors underneath track a black line and continuously correct the robot's heading — both on the line means forward, one off means turn. An ultrasonic sensor up front adds a second layer: when something appears within range, the robot abandons the line, backs up, steers around the obstacle, then hunts for the line again before carrying on.</p>
+          <div class="parts">
+            <span class="part">Arduino Uno</span><span class="part">IR sensors</span><span class="part">Ultrasonic</span><span class="part">Motor control</span><span class="part">Circuits</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">Robotics · 5th in Ontario</span>
+          <video src="assets/video/ontarioskills-robot.mp4" poster="assets/img/OntarioSkills.jpg" muted loop playsinline preload="none" controls></video>
+        </div>
+        <div class="body">
+          <h3>OntarioSkills Competition Robot</h3>
+          <p>Think of a warehouse worker, but made of metal, wires, and code. A motorized claw that lifts, carries, and drops boxes while navigating a set course — sensors and control logic working together so it aligns with targets and moves loads without tipping.</p>
+          <div class="parts">
+            <span class="part">C++</span><span class="part">Motor control</span><span class="part">Sensors</span><span class="part">Mechanical design</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">Arduino build</span>
+          <video src="assets/video/robot-arm.mp4" poster="assets/img/RobotArmImage1.jpg" muted loop playsinline preload="none" controls></video>
+        </div>
+        <div class="body">
+          <h3>Popsicle-Stick Robot Arm</h3>
+          <p>Three servo motors, three potentiometers, and a bunch of popsicle sticks walk into a workshop… and leave as a robotic arm.</p>
+          <p>Each potentiometer drives one degree of freedom — up/down, left/right, wrist rotation. The servos are positioned to balance range against stability, so it lifts small objects without straining the motors.</p>
+          <div class="parts">
+            <span class="part">Arduino Uno</span><span class="part">Servos</span><span class="part">Potentiometers</span><span class="part">Circuits</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">Arduino build</span>
+          <video src="assets/video/smart-trash-can.mp4" poster="assets/img/SmartTrashBin.jpg" muted loop playsinline preload="none" controls></video>
+        </div>
+        <div class="body">
+          <h3>Smart Trash Can</h3>
+          <p>A hands-free bin that opens when you walk up to it. An ultrasonic sensor watches for distance and a servo lifts the lid through a reinforced popsicle-stick arm. The goal was to make throwing something out more hygienic and slightly cooler than a normal trash can.</p>
+          <div class="parts">
+            <span class="part">Arduino Uno</span><span class="part">Ultrasonic</span><span class="part">Servo</span><span class="part">Mechanical design</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">Circuits</span>
+          <img src="assets/img/Nightlight.jpg" alt="Soldered nightlight circuit on perfboard" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Photoresistor Night Light</h3>
+          <p>A simple but satisfying build — a nightlight that switches itself on when the room gets dark. A photoresistor senses the light level and the LED kicks in below threshold. Everything laid out flush on perfboard and soldered down. No breadboard spaghetti here.</p>
+          <div class="parts">
+            <span class="part">Soldering</span><span class="part">Perfboard</span><span class="part">Photoresistor</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">CNC · Manufacturing</span>
+          <img src="assets/img/Asteroid.jpg" alt="Machined aluminium tag with an asteroid impact scene" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Asteroid Impact Metal Tag</h3>
+          <p>My first real dive into CNC, as both designer and manufacturer. A 3&Prime;&times;2&Prime; block of aluminium became an asteroid impact scene, because I love space. I mapped the design in V-Carve, planned toolpaths across three different bits for layered depth, then cut, filed, and milled it into existence.</p>
+          <div class="parts">
+            <span class="part">CNC milling</span><span class="part">V-Carve</span><span class="part">Cutoff saw</span><span class="part">Filing</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">Machining</span>
+          <img src="assets/img/Pen1.jpg" alt="Custom machined aluminium pen with knurled grip" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Machined Aluminium Pen</h3>
+          <p>This isn't just a pen — it's <em>my</em> pen. Sketches first, then an orthographic drawing at 1:2 scale (5&Prime; × 0.5&Prime;). Turned the tip from a cylindrical blank on the metal lathe, drilled a centred bore for the cartridge, cut grooves and knurling, then matched the body so the two align perfectly. Threaded both halves with a tap-and-die set so they screw together.</p>
+          <div class="parts">
+            <span class="part">Metal lathe</span><span class="part">Knurling</span><span class="part">Threading</span><span class="part">Orthographic drawing</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">CNC · Manufacturing</span>
+          <img src="assets/img/Airplane1.jpg" alt="Aluminium mould machined with a raised airplane design" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Airplane Chocolate Mould</h3>
+          <p>A 2&times;2&Prime; aluminium mould carrying a 3D airplane at two elevations — raised body, slightly lower wings. Cut, milled, and CNC-machined for depth, then used to form a plastic mould for chocolate. The whole exercise was balancing an intricate design against what the machine could actually cut.</p>
+          <div class="parts">
+            <span class="part">V-Carve</span><span class="part">CNC milling</span><span class="part">Cutoff saw</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <span class="tag">CAD · 3D printing</span>
+          <img src="assets/img/PokemonTrophy1.jpg" alt="3D printed Pokemon trophy on a machined base" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Pokémon Trophy</h3>
+          <p>A custom trophy modelled from scratch — base built in Tinkercad, refined in SolidWorks, prepared in V-Carve. The topper was printed for detail and durability, cleaned up, and mounted for a champion-worthy finish.</p>
+          <div class="parts">
+            <span class="part">SolidWorks</span><span class="part">Tinkercad</span><span class="part">3D printing</span><span class="part">V-Carve</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ SKILLS ============ -->
+  <section id="skills">
+    <div class="shead"><span class="sref">03</span><h2>Toolkit</h2><span class="dash"></span></div>
+    <div class="skills">
+      <div class="skill">
+        <h3>Languages</h3>
+        <ul><li>C++</li><li>Python</li><li>TypeScript / JavaScript</li><li>Google Apps Script</li></ul>
+      </div>
+      <div class="skill">
+        <h3>Embedded</h3>
+        <ul><li>Arduino</li><li>Sensor integration</li><li>Motor control</li><li>Circuits &amp; soldering</li></ul>
+      </div>
+      <div class="skill">
+        <h3>Software</h3>
+        <ul><li>React</li><li>Pandas / NumPy</li><li>Git &amp; GitHub</li><li>Multi-agent systems</li></ul>
+      </div>
+      <div class="skill">
+        <h3>Fabrication</h3>
+        <ul><li>SolidWorks</li><li>CNC milling &amp; V-Carve</li><li>Metal lathe</li><li>3D printing</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SIGNALS ============ -->
+  <section id="signals">
+    <div class="shead"><span class="sref">04</span><h2>Background noise</h2><span class="dash"></span></div>
+    <div class="notes">
+      <div class="note"><span class="n-k">// space</span><p>I follow space and astronomy far more closely than is useful. It shows up in my work — the asteroid tag was not a coincidence.</p></div>
+      <div class="note"><span class="n-k">// swimming</span><p>In the pool most weeks. It's the one hobby that has nothing to do with a screen, which is exactly the point.</p></div>
+      <div class="note"><span class="n-k">// marvel &amp; pokémon</span><p>I'll happily talk your ear off about either, given the smallest opening. There is a trophy in the projects section as evidence.</p></div>
+      <div class="note"><span class="n-k">// deca</span><p>Two years, finishing as chapter president of a 200+ member chapter and an Ontario provincial champion in Financial Trading &amp; Decision Making.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT ============ -->
+  <section id="contact">
+    <div class="contact">
+      <h2>Let's build something</h2>
+      <p>Looking for a Summer 2027 co-op in software or firmware. Always up for talking about embedded systems, or the Coke Zero chute.</p>
+      <div class="links">
+        <a class="btn primary" href="mailto:jashandeepm2008@gmail.com">jashandeepm2008@gmail.com</a>
+        <a class="btn" href="https://linkedin.com/in/jashanmultani" target="_blank" rel="noopener">LinkedIn</a>
+        <a class="btn" href="https://github.com/Jashan-Mshadow" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>Built by hand · Waterloo, Ontario</footer>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('theme');
+  try{ var s=localStorage.getItem('jm-theme'); if(s){ root.setAttribute('data-theme',s); } }catch(e){}
+  btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme');
+    if(!cur){ cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    var next = cur==='dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme',next);
+    try{ localStorage.setItem('jm-theme',next); }catch(e){}
+  });
+  // play project clips on hover, pause on leave — desktop only, respects reduced motion
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches && matchMedia('(hover: hover)').matches){
+    document.querySelectorAll('.media video').forEach(function(v){
+      var m=v.parentElement;
+      m.addEventListener('mouseenter',function(){ v.play().catch(function(){}); });
+      m.addEventListener('mouseleave',function(){ v.pause(); });
+    });
+  }
+})();
+</script>
+</body>
+</html>
