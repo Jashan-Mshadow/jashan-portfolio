@@ -580,6 +580,9 @@ document.documentElement.classList.add('js');
       es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
     },{rootMargin:'0px 0px -8% 0px',threshold:.06});
     rv.forEach(function(el){ io.observe(el); });
+    /* safety net: never leave content invisible if the observer never fires
+       (hidden tab, prerender, odd browser). Reveal everything after 1.5s. */
+    setTimeout(function(){ rv.forEach(function(el){ el.classList.add('in'); }); },1500);
   }
 
   /* ---- hover-to-play clips (desktop) ---- */
