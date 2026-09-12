@@ -34,6 +34,22 @@
   ];
   var current = null, visited = {};
 
+  /* ============================================================= RESUME */
+  /* Only surface a download once we know the file is really there. */
+  var resumeOK = false;
+  (function resumeCheck() {
+    if (!S.resume || !window.fetch) return;
+    fetch(S.resume, { method: 'HEAD' }).then(function (r) {
+      if (!r.ok) return;
+      resumeOK = true;
+      document.querySelectorAll('[data-resume]').forEach(function (n) { n.hidden = false; });
+    }).catch(function () {});
+  })();
+  function resumeBtn(cls) {
+    return '<a class="' + cls + '" data-resume href="' + (S.resume || '#') +
+           '" download hidden>Download resume (PDF)</a>';
+  }
+
   /* ============================================================ TROPHIES */
   function markProject(id) {
     if (seenProjects[id]) return;
@@ -275,7 +291,8 @@
       else if (screen === 'skills')   page('MEMORY CARD', S.skills.map(function (x) { return x[0].toUpperCase() + ':\n' + x[1].join(', '); }));
       else if (screen === 'trophies') page('TROPHY CASE', [T.count() + ' / ' + T.total() + ' UNLOCKED'].concat(
           T.all().map(function (t) { return (T.has(t.id) ? '\u2605 ' : '\u2606 ') + t.name.toUpperCase() + (T.has(t.id) ? '\n   ' + t.desc : '\n   ???'); })));
-      else if (screen === 'contact')  { T.unlock('recruiter'); page('TRANSMIT', [S.contact.line, S.contact.email, 'linkedin.com/in/jashanmultani', 'github.com/Jashan-Mshadow']); }
+      else if (screen === 'contact')  { T.unlock('recruiter'); page('TRANSMIT', [S.contact.line, S.contact.email, 'linkedin.com/in/jashanmultani',
+          'github.com/Jashan-Mshadow'].concat(resumeOK ? ['RESUME: available in BORING MODE'] : [])); }
     }
 
     function key(k) {
@@ -400,7 +417,8 @@
       else { T.unlock('recruiter'); panel('Party', '<p>' + esc(S.contact.line) + '</p><div class="ps-actions">' +
         '<a class="ps-btn" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
         '<a class="ps-btn ghost" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
-        '<a class="ps-btn ghost" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a></div>'); }
+        '<a class="ps-btn ghost" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
+        resumeBtn('ps-btn ghost') + '</div>'); }
     }
 
     w._keys = function (e) {
@@ -530,6 +548,7 @@
           '<a class="pl-btn primary" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
           '<a class="pl-btn" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
           '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
+          resumeBtn('pl-btn primary') +
           '<button class="pl-btn" id="toBoring" type="button">Switch to Boring Mode</button></div>' +
           '<p style="margin-top:18px;color:#8A8A8A;font-size:13px">Trophies: ' + T.count() + ' / ' + T.total() + '</p></div>';
         var tb = det.querySelector('#toBoring'); if (tb) tb.addEventListener('click', function () { setMode('plain'); });
@@ -573,7 +592,7 @@
          ['cat /projects/<name>','open one — try `cat /projects/line`'],
          ['whoami','short version'],['uptime','how long I have been at this'],
          ['neofetch','system info'],['trophies','achievement status'],
-         ['ping contact','how to reach me'],['clear','wipe the screen']]
+         ['ping contact','how to reach me'],['resume','download the PDF'],['clear','wipe the screen']]
         .forEach(function (c) { w_('  ' + c[0].padEnd(26) + c[1]); });
       },
       whoami: function () { w_(S.name + ' — ' + S.role); w_(S.blurb, 'c2'); },
@@ -591,7 +610,15 @@
         w_(T.count() + ' / ' + T.total() + ' unlocked');
         T.all().forEach(function (t) { w_((T.has(t.id) ? '  [x] ' : '  [ ] ') + (T.has(t.id) ? t.name : '???')); });
       },
-      clear: function () { out.innerHTML = ''; }
+      clear: function () { out.innerHTML = ''; },
+      resume: function () {
+        if (!resumeOK) { w_('resume: not published here yet \u2014 email for a copy.', 'err'); return; }
+        w_('Fetching resume.pdf ...', 'c2');
+        w_('  1 page \u00b7 Computer Engineering \u00b7 Waterloo');
+        var a = document.createElement('a');
+        a.href = S.resume; a.download = ''; a.click();
+        w_('Download started.', 'c2');
+      }
     };
 
     function run(raw) {

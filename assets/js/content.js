@@ -195,6 +195,10 @@ window.SITE = {
     ["DECA", "Two years, finishing as chapter president of a 200+ member chapter and an Ontario provincial champion in Financial Trading & Decision Making."]
   ],
 
+  /* Populated only if assets/resume.pdf actually exists — see resumeCheck()
+     in app.js. A dead download link is worse than no download link. */
+  resume: "assets/resume.pdf",
+
   contact: {
     email: "jashandeepm2008@gmail.com",
     linkedin: "https://linkedin.com/in/jashanmultani",
