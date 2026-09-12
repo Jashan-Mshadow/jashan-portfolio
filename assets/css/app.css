@@ -497,3 +497,140 @@ a{color:inherit}
   background:#E4000F;color:#fff;padding:2px 7px;border-radius:4px;margin-top:6px}
 .sw-price.os{background:#00A0E9}
 .sw-stars{color:#F5B700;font-size:11px;letter-spacing:1px;display:block;margin-top:4px}
+
+/* ===========================================================================
+   v4 — PS5 rebuilt as a real game hub, Switch as a real home screen + eShop,
+   plus the fixes: portrait images, scrollable GB pages, louder SYS_MENU.
+   ========================================================================= */
+
+/* ---------------------------------------------- fix: portrait images fit */
+.gb-art{object-fit:contain;background:#9bbc0f}
+.gb-screen-in img,.gb-screen-in video{object-fit:contain}
+.sw-tile .sq img{object-fit:cover;object-position:center 35%}
+
+/* ---------------------------------------------- fix: GB pages must scroll */
+.gb-type{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.gb-type::-webkit-scrollbar{width:4px}
+.gb-type::-webkit-scrollbar-thumb{background:#0f380f;border-radius:2px}
+
+/* --------------------------------------------------- louder SYS_MENU */
+#sysBtn{
+  background:var(--copper);color:#0C1016;border-color:var(--copper);font-weight:700;
+  padding:10px 16px;font-size:11px;box-shadow:0 8px 24px rgba(224,154,85,.3);
+  animation:sysPulse 3.2s ease-in-out infinite;
+}
+#sysBtn:hover{color:#0C1016;filter:brightness(1.1);animation:none}
+@keyframes sysPulse{0%,100%{box-shadow:0 8px 24px rgba(224,154,85,.28)}50%{box-shadow:0 8px 34px rgba(224,154,85,.6)}}
+#sysBtn::before{content:"\21C4  "}
+
+/* ------------------------------------------------------- picker, spiced */
+#picker{position:relative;overflow:hidden}
+.pick-glow{position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(110px);opacity:.34;pointer-events:none}
+.pick-glow.a{background:radial-gradient(circle,var(--copper),transparent 62%);top:-22vw;left:-12vw}
+.pick-glow.b{background:radial-gradient(circle,var(--signal),transparent 62%);bottom:-24vw;right:-14vw;opacity:.24}
+.picker-in h1{position:relative}
+.pick-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--copper);margin:0 0 14px;display:flex;gap:9px;align-items:center;justify-content:center}
+.pick{position:relative}
+.pick::after{
+  content:"";position:absolute;inset:0;border-radius:16px;pointer-events:none;opacity:0;transition:opacity .25s;
+  background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.10) 50%,transparent 70%);
+}
+.pick:hover::after{opacity:1}
+.pick-art{height:120px;overflow:hidden}
+.pick-badge{
+  position:absolute;top:9px;right:9px;font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;
+  background:rgba(0,0,0,.5);color:#fff;padding:3px 7px;border-radius:5px;backdrop-filter:blur(4px);
+}
+.pick-rammy{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%)}
+
+/* ======================= PS5 — full-bleed game hub ====================== */
+.ps5{position:fixed;inset:0;overflow:hidden;background:#05080E}
+.ps5-bg{position:absolute;inset:0;z-index:0}
+.ps5-bg img,.ps5-bg video{width:100%;height:100%;object-fit:cover;
+  animation:kenburns 22s ease-in-out infinite alternate;opacity:0;transition:opacity .45s ease}
+.ps5-bg img.on,.ps5-bg video.on{opacity:1}
+@keyframes kenburns{from{transform:scale(1.03)}to{transform:scale(1.13)}}
+.ps5-scrim{position:absolute;inset:0;z-index:1;
+  background:linear-gradient(to top,#05080E 6%,rgba(5,8,14,.78) 38%,rgba(5,8,14,.28) 72%,rgba(5,8,14,.5) 100%)}
+.ps5-tint{position:absolute;inset:0;z-index:1;mix-blend-mode:soft-light;transition:background 1s ease}
+
+.ps5-top{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:14px;
+  padding:20px 34px;font-size:13px}
+.ps5-top .av{width:40px;height:40px;border-radius:50%;background:linear-gradient(140deg,var(--copper),#8E3A54);
+  display:grid;place-items:center;font-family:var(--display);font-weight:800;color:#0C1016}
+.ps5-top strong{display:block;font-family:var(--display);font-size:14px}
+.ps5-top span{color:#93A9C4;font-size:12px}
+.ps5-nav{margin-left:auto;display:flex;gap:8px}
+.ps5-nav button{background:rgba(255,255,255,.08);border:0;color:#C6D6E8;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding:8px 14px;border-radius:8px}
+.ps5-nav button[aria-pressed="true"]{background:#F2F5F9;color:#08111C;font-weight:700}
+
+.ps5-hub{position:absolute;left:0;right:0;bottom:0;z-index:5;padding:0 34px 26px;display:flex;flex-direction:column;gap:20px}
+.ps5-meta{max-width:min(620px,64vw)}
+.ps5-meta .kick{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8FC7FF;margin:0 0 8px}
+.ps5-meta h2{font-family:var(--display);font-weight:800;font-size:clamp(30px,5.2vw,62px);line-height:.98;
+  margin:0 0 12px;letter-spacing:-.035em;text-wrap:balance;text-shadow:0 4px 34px rgba(0,0,0,.7)}
+.ps5-meta p{margin:0 0 10px;color:#CFDCEA;font-size:15.5px;max-width:56ch;text-shadow:0 2px 14px rgba(0,0,0,.7)}
+.ps5-specs{display:flex;gap:0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden;
+  margin-top:14px;background:rgba(8,14,24,.5);backdrop-filter:blur(10px);flex-wrap:wrap}
+.ps5-specs div{padding:9px 15px;border-right:1px solid rgba(255,255,255,.12)}
+.ps5-specs div:last-child{border-right:0}
+.ps5-specs dt{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#8FA6C0}
+.ps5-specs dd{margin:3px 0 0;font-size:13px;font-weight:600}
+
+.ps5-rail{display:flex;gap:14px;overflow-x:auto;padding:10px 0 6px;scroll-behavior:smooth}
+.ps5-rail::-webkit-scrollbar{height:0}
+.ps5-card{flex:none;width:124px;border-radius:12px;overflow:hidden;border:2px solid transparent;
+  background:#0B1524;padding:0;position:relative;transition:transform .26s cubic-bezier(.2,.9,.3,1),border-color .2s,box-shadow .26s}
+.ps5-card img{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:center 35%}
+.ps5-card b{position:absolute;left:0;right:0;bottom:0;padding:22px 9px 8px;font-size:10.5px;font-weight:500;
+  text-align:left;background:linear-gradient(to top,rgba(4,8,14,.95),transparent);color:#DCE8F5}
+.ps5-card[aria-current="true"]{border-color:#fff;transform:translateY(-12px) scale(1.05);
+  box-shadow:0 20px 46px rgba(0,0,0,.6),0 0 0 4px rgba(255,255,255,.12)}
+
+.ps5-hints{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:#9FB6CE;align-items:center}
+.ps5-hints b{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;
+  border:1.5px solid #9FB6CE;font-size:10px;margin-right:7px;vertical-align:-4px}
+.ps5-hints span{white-space:nowrap}
+.ps5-pane{position:absolute;inset:74px 34px 24px;z-index:6;overflow-y:auto;background:rgba(6,11,19,.9);
+  backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:30px 34px}
+.ps5-pane h2{font-family:var(--display);font-weight:800;font-size:clamp(22px,3vw,32px);margin:0 0 16px;letter-spacing:-.02em}
+.ps5-pane p{color:#C2D2E4;font-size:15px}
+@media (max-width:760px){ .ps5-top,.ps5-hub{padding-left:18px;padding-right:18px} .ps5-meta{max-width:100%} .ps5-hints{display:none} }
+
+/* ================== SWITCH — real home screen + eShop ================== */
+.swm{background:#2D2D2D}
+.sw-tile[aria-current="true"] .sq{border-color:#00C3E3;box-shadow:0 0 0 4px rgba(0,195,227,.35),0 0 30px rgba(0,195,227,.4)}
+.sw-home-grid{display:flex;gap:18px;overflow-x:auto;padding:20px 0 28px;align-items:center}
+.sw-home-grid::-webkit-scrollbar{height:6px}
+.sw-home-grid::-webkit-scrollbar-thumb{background:#4A4A4A;border-radius:4px}
+.sw-wifi{display:inline-block;width:14px;height:11px;position:relative}
+.sw-wifi::before{content:"";position:absolute;inset:0;border:2px solid #9A9A9A;border-bottom:0;
+  border-radius:14px 14px 0 0;clip-path:polygon(0 0,100% 0,50% 100%)}
+
+/* eShop */
+.esh{background:#212121;border-radius:16px;overflow:hidden}
+.esh-hero{background:linear-gradient(115deg,#FF6000,#FF8A2B);padding:28px 30px;position:relative;overflow:hidden}
+.esh-hero::after{content:"";position:absolute;right:-40px;top:-40px;width:220px;height:220px;
+  border-radius:36px;background:rgba(255,255,255,.12);transform:rotate(22deg)}
+.esh-hero h2{font-family:var(--display);font-weight:800;font-size:clamp(22px,3vw,32px);margin:0;color:#fff;letter-spacing:-.02em}
+.esh-hero p{margin:7px 0 0;color:rgba(255,255,255,.9);font-size:14px;max-width:52ch}
+.esh-grid{display:grid;gap:16px;padding:24px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.esh-card{background:#2B2B2B;border-radius:13px;overflow:hidden;display:flex;flex-direction:column;
+  transition:transform .18s,box-shadow .18s}
+.esh-card:hover{transform:translateY(-4px);box-shadow:0 16px 34px rgba(0,0,0,.45)}
+.esh-banner{height:98px;display:grid;place-items:center;font-family:var(--display);font-weight:800;
+  font-size:19px;color:#fff;letter-spacing:-.01em;text-align:center;padding:0 14px}
+.esh-body{padding:15px;display:flex;flex-direction:column;gap:8px;flex:1}
+.esh-body h3{margin:0;font-family:var(--display);font-size:15px}
+.esh-stars{color:#FFC400;font-size:12px;letter-spacing:1px}
+.esh-stars small{color:#9A9A9A;margin-left:6px;letter-spacing:0}
+.esh-meta{font-family:var(--mono);font-size:10.5px;color:#9A9A9A}
+.esh-tags{display:flex;flex-wrap:wrap;gap:5px}
+.esh-tags span{font-family:var(--mono);font-size:10px;background:#383838;color:#C4C4C4;padding:3px 7px;border-radius:5px}
+.esh-dl{margin-top:auto;background:#FF6000;border:0;color:#fff;font-weight:700;font-size:13px;
+  padding:10px;border-radius:8px;text-align:center;text-decoration:none;display:block}
+.esh-dl:hover{filter:brightness(1.08)}
+.esh-badge{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  background:#00C3E3;color:#04252B;padding:2px 7px;border-radius:4px;font-weight:700}

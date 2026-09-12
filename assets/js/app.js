@@ -26,10 +26,10 @@
   }
 
   var MODES = [
-    { id: 'gb',    label: 'Game Boy',    art: 'art-gb',    blurb: 'Green LCD, D-pad, one screen at a time.' },
-    { id: 'ps',    label: 'PlayStation', art: 'art-ps',    blurb: 'Cover art, ambient glow, a trophy room.' },
-    { id: 'sw',    label: 'Switch',      art: 'art-sw',    blurb: 'Profile select, tiles, bottom dock.' },
-    { id: 'tm',    label: 'Terminal',    art: 'art-tm',    blurb: 'A real shell. Type help.' },
+    { id: 'gb',    label: 'Game Boy',    art: 'art-gb',    blurb: 'Split screen: the console drives, the monitor plays the footage.' },
+    { id: 'tm',    label: 'Terminal',    art: 'art-tm',    blurb: 'A real shell with real commands. Type help.' },
+    { id: 'sw',    label: 'Switch',      art: 'art-sw',    blurb: 'Home screen, Joy-Cons, and a working eShop.' },
+    { id: 'ps',    label: 'PlayStation', art: 'art-ps',    blurb: 'Full-bleed game hub with a cover-art carousel.' },
     { id: 'plain', label: 'Boring',      art: 'art-plain', blurb: 'An ordinary website. Recruiters, start here.' }
   ];
   var current = null, visited = {};
@@ -212,7 +212,9 @@
 
     function type(node, text) {
       stopType();
-      if (reduce) { node.textContent = text; return; }
+      /* Typing is charming on a short blurb and infuriating on a long list --
+         the trophy case took nine seconds before you could even scroll it. */
+      if (reduce || text.length > 320) { node.textContent = text; return; }
       node.textContent = ''; var i = 0;
       (function step() {
         if (i >= text.length) { typer = null; return; }
@@ -305,107 +307,113 @@
   }
 
   /* ========================================================= PLAYSTATION */
-  var PS_GLOW = ['#2E6FB8','#B85C2E','#6B3FB8','#2EB894','#B82E5C','#B8A22E','#2E93B8','#8AB82E','#B8722E'];
+  var PS_GLOW = ['rgba(46,111,184,.55)','rgba(184,92,46,.55)','rgba(107,63,184,.55)','rgba(46,184,148,.5)',
+                 'rgba(184,46,92,.5)','rgba(184,162,46,.45)','rgba(46,147,184,.5)','rgba(138,184,46,.45)','rgba(184,114,46,.5)'];
   function renderPS() {
-    var w = el('div', 'psm'), sel = 0, tab = 'games';
-    w.innerHTML = '<div class="ps-amb" id="amb"></div>' +
-      '<div class="ps-top"><div class="ps-av">JM</div><div><strong>' + S.name + '</strong><span>' + S.role + '</span></div></div>' +
-      '<div class="ps-tabs" id="psTabs"></div><div id="psMain"></div>';
+    var w = el('div', 'ps5'), sel = 0, tab = 'games';
+    w.innerHTML =
+      '<div class="ps5-bg" id="bg"></div><div class="ps5-scrim"></div><div class="ps5-tint" id="tint"></div>' +
+      '<div class="ps5-top"><div class="av">JM</div><div><strong>' + esc(S.name) + '</strong>' +
+        '<span>' + esc(S.role) + '</span></div><div class="ps5-nav" id="nav"></div></div>' +
+      '<div class="ps5-hub" id="hub"></div><div id="pane"></div>';
     stage.appendChild(w);
-    var tabs = w.querySelector('#psTabs'), main = w.querySelector('#psMain'), amb = w.querySelector('#amb');
-    var TABS = [['games','Media Gallery'],['about','About'],['work','Experience'],['trophy','Trophy Room'],['contact','Party']];
+    var bg = w.querySelector('#bg'), tint = w.querySelector('#tint'),
+        nav = w.querySelector('#nav'), hub = w.querySelector('#hub'), pane = w.querySelector('#pane');
+    var TABS = [['games','Games'],['about','About'],['work','Experience'],['trophy','Trophies'],['contact','Party']];
 
-    function glow(i) {
-      var c = PS_GLOW[i % PS_GLOW.length];
-      amb.style.background = 'radial-gradient(ellipse 70% 50% at 30% 12%,' + c + '55,transparent 70%)';
+    /* cross-fade the full-bleed background between projects */
+    function setBg(p, i) {
+      var next = p.video ? document.createElement('video') : document.createElement('img');
+      if (p.video) { next.src = p.video; next.poster = p.img; next.muted = true; next.loop = true;
+                     next.autoplay = true; next.playsInline = true; next.play().catch(function () {}); }
+      else next.src = p.img;
+      bg.appendChild(next);
+      requestAnimationFrame(function () { next.classList.add('on'); });
+      setTimeout(function () {
+        [].slice.call(bg.children).forEach(function (c) { if (c !== next) c.remove(); });
+      }, 480);
+      tint.style.background = PS_GLOW[i % PS_GLOW.length];
     }
-    function drawTabs() {
-      tabs.innerHTML = '';
+
+    function drawNav() {
+      nav.innerHTML = '';
       TABS.forEach(function (t) {
         var b = el('button', null, t[1]); b.type = 'button';
         b.setAttribute('aria-pressed', String(tab === t[0]));
         b.addEventListener('click', function () { SFX.psMove(); tab = t[0]; draw(); });
-        tabs.appendChild(b);
+        nav.appendChild(b);
       });
     }
+
     function games() {
-      var p = S.projects[sel]; glow(sel); markProject(p.id);
-      main.innerHTML =
-        '<div class="ps-hero"><div class="ps-art"><span class="spec"></span>' +
-          (p.video ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="metadata"></video>'
-                   : '<img src="' + p.img + '" alt="">') +
-        '</div><div class="ps-info">' +
-          '<span class="ps-badge">' + esc(p.status) + ' · ' + esc(p.year) + '</span>' +
-          '<h2>' + esc(p.full) + '</h2><p>' + esc(p.hook) + '</p><p>' + esc(p.body) + '</p>' +
-          '<p class="lesson">' + esc(p.lesson) + '</p>' +
-          '<div class="ps-actions"><a class="ps-btn" href="' + p.repo + '" target="_blank" rel="noopener">View code</a>' +
-          '<button class="ps-btn ghost" id="nx" type="button">Next</button></div>' +
-        '</div></div><div class="ps-rail"><div class="ps-strip" id="strip"></div></div>';
-      var strip = main.querySelector('#strip');
+      pane.innerHTML = ''; hub.style.display = '';
+      var p = S.projects[sel];
+      setBg(p, sel); markProject(p.id);
+      hub.innerHTML =
+        '<div class="ps5-meta"><p class="kick">' + esc(p.status) + ' &middot; ' + esc(p.year) + '</p>' +
+        '<h2>' + esc(p.full) + '</h2><p>' + esc(p.hook) + '</p>' +
+        '<dl class="ps5-specs">' +
+          '<div><dt>Hardware</dt><dd>' + esc(p.parts[0]) + '</dd></div>' +
+          '<div><dt>Stack</dt><dd>' + esc(p.parts.slice(1, 3).join(', ') || p.parts[0]) + '</dd></div>' +
+          '<div><dt>Year</dt><dd>' + esc(p.year) + '</dd></div>' +
+          '<div><dt>Source</dt><dd>Public</dd></div>' +
+        '</dl></div>' +
+        '<div class="ps5-rail" id="rail"></div>' +
+        '<div class="ps5-hints">' +
+          '<span><b>\u2715</b>Launch demo</span><span><b>\u25A1</b>View source</span>' +
+          '<span><b>\u25B3</b>Details</span><span>\u2190 \u2192 browse</span></div>';
+      var rail = hub.querySelector('#rail');
       S.projects.forEach(function (q, i) {
-        var b = el('button', 'ps-tile'); b.type = 'button';
+        var b = el('button', 'ps5-card'); b.type = 'button';
         b.setAttribute('aria-current', String(i === sel));
-        b.innerHTML = '<img src="' + q.img + '" alt=""><span>' + esc(q.name) + '</span>';
+        b.innerHTML = '<img src="' + q.img + '" alt=""><b>' + esc(q.name) + '</b>';
         b.addEventListener('click', function () { SFX.psMove(); sel = i; draw(); });
-        strip.appendChild(b);
+        rail.appendChild(b);
       });
-      main.querySelector('#nx').addEventListener('click', function () { SFX.psMove(); sel = (sel + 1) % S.projects.length; draw(); });
-      var c = strip.querySelector('[aria-current="true"]'); if (c && c.scrollIntoView) c.scrollIntoView({ block:'nearest', inline:'center' });
+      var cur = rail.querySelector('[aria-current="true"]');
+      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
     }
-    function trophyRoom() {
-      main.innerHTML = '<div class="ps-hero" style="grid-template-columns:1fr"><div class="ps-info">' +
-        '<h2>Trophy Room</h2><p>' + T.count() + ' of ' + T.total() + ' unlocked. Some are hiding in other consoles.</p>' +
-        '<div class="ps-trophies">' + T.all().map(function (t) {
-          var has = T.has(t.id);
-          return '<div class="ps-tr' + (has ? '' : ' locked') + '"><span class="ico">' + t.icon + '</span><span>' +
-                 '<b>' + esc(has ? t.name : '???') + '</b><small>' + esc(has ? t.desc : 'Locked.') + '</small></span></div>';
-        }).join('') + '</div></div></div>';
+
+    function panel(title, html) {
+      hub.style.display = 'none';
+      pane.innerHTML = '<div class="ps5-pane"><h2>' + title + '</h2>' + html + '</div>';
     }
-    function simple(title, html) {
-      main.innerHTML = '<div class="ps-hero" style="grid-template-columns:1fr"><div class="ps-info"><h2>' + title + '</h2>' + html + '</div></div>';
-    }
+
     function draw() {
-      drawTabs();
-      if (tab === 'contact') T.unlock('recruiter');
+      drawNav();
       if (tab === 'games') games();
-      else if (tab === 'trophy') trophyRoom();
-      else if (tab === 'about') simple('About', '<p>' + esc(S.thesis) + '</p><p>' + esc(S.thesis2) + '</p><p class="lesson">' + esc(S.fleet) + '</p>' +
-        S.interests.map(function (i) { return '<p><b>' + esc(i[0]) + '</b> — ' + esc(i[1]) + '</p>'; }).join(''));
-      else if (tab === 'work') simple('Experience', S.experience.map(function (j) {
-        return '<span class="ps-badge">' + esc(j.when) + ' · ' + esc(j.where) + '</span><h2 style="font-size:20px">' + esc(j.org) +
-               '</h2><p style="color:#7FC7FF">' + esc(j.role) + '</p>' + j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
-      }).join('<hr style="border:0;border-top:1px solid #24405C;margin:22px 0">'));
-      else { simple('Party', '<p>' + esc(S.contact.line) + '</p><div class="ps-actions">' +
+      else if (tab === 'trophy') panel('Trophies', '<p>' + T.count() + ' of ' + T.total() +
+        ' unlocked. Some are hiding in other consoles.</p><div class="ps-trophies">' +
+        T.all().map(function (t) {
+          var h = T.has(t.id);
+          return '<div class="ps-tr' + (h ? '' : ' locked') + '"><span class="ico">' + t.icon +
+                 '</span><span><b>' + esc(h ? t.name : '???') + '</b><small>' + esc(h ? t.desc : 'Locked.') + '</small></span></div>';
+        }).join('') + '</div>');
+      else if (tab === 'about') panel('About', '<p>' + esc(S.thesis) + '</p><p>' + esc(S.thesis2) + '</p><p>' + esc(S.fleet) + '</p>' +
+        S.interests.map(function (i) { return '<p><b>' + esc(i[0]) + '</b> \u2014 ' + esc(i[1]) + '</p>'; }).join(''));
+      else if (tab === 'work') panel('Experience', S.experience.map(function (j) {
+        return '<p class="kick" style="color:#8FC7FF;font-family:var(--mono);font-size:11px;letter-spacing:.15em">' +
+               esc(j.when) + ' \u00b7 ' + esc(j.where) + '</p><h2 style="font-size:21px">' + esc(j.org) + '</h2>' +
+               '<p style="color:#8FC7FF">' + esc(j.role) + '</p>' +
+               j.bullets.map(function (x) { return '<p>' + md(x) + '</p>'; }).join('');
+      }).join('<hr style="border:0;border-top:1px solid rgba(255,255,255,.12);margin:24px 0">'));
+      else { T.unlock('recruiter'); panel('Party', '<p>' + esc(S.contact.line) + '</p><div class="ps-actions">' +
         '<a class="ps-btn" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
         '<a class="ps-btn ghost" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
         '<a class="ps-btn ghost" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a></div>'); }
     }
+
     w._keys = function (e) {
-      if (tab !== 'games' || sysMenu.classList.contains('open')) return;
+      if (sysMenu.classList.contains('open')) return;
+      if (tab !== 'games') return;
       if (e.key === 'ArrowRight') { e.preventDefault(); SFX.psMove(); sel = (sel + 1) % S.projects.length; draw(); }
       if (e.key === 'ArrowLeft')  { e.preventDefault(); SFX.psMove(); sel = (sel - 1 + S.projects.length) % S.projects.length; draw(); }
+      if (e.key === 'Enter')      { var v = bg.querySelector('video'); if (v) { v.muted = !v.muted; } }
+      if (e.key.toLowerCase() === 's') window.open(S.projects[sel].repo, '_blank', 'noopener');
     };
     addEventListener('keydown', w._keys);
-
-    /* mouse-tracked tilt + specular sweep across the hero art */
-    if (!reduce && matchMedia('(hover: hover)').matches) {
-      w.addEventListener('mousemove', function (e) {
-        var art = w.querySelector('.ps-art'); if (!art) return;
-        var r = art.getBoundingClientRect();
-        var x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-        if (x < -0.3 || x > 1.3 || y < -0.3 || y > 1.3) { art.style.transform = ''; return; }
-        art.style.transform = 'perspective(1100px) rotateX(' + (-(y - 0.5) * 5).toFixed(2) +
-                              'deg) rotateY(' + ((x - 0.5) * 6).toFixed(2) + 'deg)';
-        var sp = art.querySelector('.spec');
-        if (sp) { sp.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
-                  sp.style.setProperty('--my', (y * 100).toFixed(1) + '%'); }
-      });
-    }
-
     SFX.psBoot(); draw();
-    rammyMount(function () {
-      return tab === 'games' ? RAMMY.forProject(S.projects[sel]) : RAMMY.say(tab === 'contact' ? 'contact' : 'idle');
-    });
+    rammyMount(function () { return tab === 'games' ? RAMMY.forProject(S.projects[sel]) : RAMMY.say('idle'); });
   }
 
   /* ============================================================== SWITCH */
@@ -463,6 +471,7 @@
       });
       if (view === 'games') {
         strip.innerHTML = '';
+        strip.classList.add('sw-home-grid');
         S.projects.forEach(function (p, i) {
           var b = el('button', 'sw-tile'); b.type = 'button';
           b.setAttribute('aria-current', String(i === sel));
@@ -486,10 +495,31 @@
                  '</h2><p style="color:#E4747E">' + esc(j.role) + '</p>' + j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
         }).join('') + '</div>';
       } else if (view === 'skills') {
-        det.innerHTML = '<div class="sw-detail"><h2>eShop</h2>' + S.skills.map(function (s) {
-          return '<div class="yr" style="margin-top:16px">' + esc(s[0]) + '</div><div class="sw-chips">' +
-                 s[1].map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div>';
-        }).join('') + '</div>';
+        var PACKS = [
+          ['Embedded Systems Pack', 'linear-gradient(135deg,#00A0E9,#0063A8)', 5.0, '48 KB', 'C++, C', 0,
+           'Arduino, sensor integration, motor control, circuits and soldering.', 'https://github.com/Jashan-Mshadow/line-following-robot'],
+          ['Robotics Control Suite', 'linear-gradient(135deg,#E4000F,#A00009)', 4.5, '36 KB', 'C++', 1,
+           'Differential drive, claw sequencing and the timing fixes that stopped it dropping boxes.', 'https://github.com/Jashan-Mshadow/ontarioskills-robot'],
+          ['Software & Data Bundle', 'linear-gradient(135deg,#7B2FF7,#4A17A8)', 4.5, '2.1 MB', 'Python, TS', 2,
+           'React, Pandas, NumPy, Git, and multi-agent system design.', 'https://github.com/Jashan-Mshadow'],
+          ['Fabrication Toolkit', 'linear-gradient(135deg,#FF6000,#C43F00)', 5.0, '14 MB', 'CAD, G-code', 3,
+           'SolidWorks, CNC milling, V-Carve, metal lathe and 3D printing.', 'https://github.com/Jashan-Mshadow/workshop']
+        ];
+        det.innerHTML = '<div class="esh"><div class="esh-hero"><h2>Nintendo eShop</h2>' +
+          '<p>Everything here is free, open source, and comes with no downloadable content whatsoever.</p></div>' +
+          '<div class="esh-grid">' + PACKS.map(function (k) {
+            var full = Math.floor(k[2]), half = k[2] % 1 >= 0.5;
+            var stars = '\u2605'.repeat(full) + (half ? '\u00bd' : '') + '\u2606'.repeat(5 - full - (half ? 1 : 0));
+            return '<div class="esh-card"><div class="esh-banner" style="background:' + k[1] + '">' + esc(k[0]) + '</div>' +
+              '<div class="esh-body"><span class="esh-badge">OPEN SOURCE</span>' +
+              '<h3>' + esc(k[0]) + '</h3>' +
+              '<span class="esh-stars">' + stars + '<small>' + k[2].toFixed(1) + ' / 5</small></span>' +
+              '<p style="margin:0;font-size:13px;color:#B4B4B4">' + esc(k[6]) + '</p>' +
+              '<div class="esh-meta">File size: ' + k[3] + ' &nbsp;\u00b7&nbsp; Languages: ' + k[4] + '</div>' +
+              '<div class="esh-tags">' + (S.skills[k[5]] ? S.skills[k[5]][1].map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') : '') + '</div>' +
+              '<a class="esh-dl" href="' + k[7] + '" target="_blank" rel="noopener">FREE DOWNLOAD</a>' +
+              '</div></div>';
+          }).join('') + '</div></div>';
       } else if (view === 'album') {
         det.innerHTML = '<div class="sw-detail"><h2>Album</h2><div class="sw-chips" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">' +
           S.projects.map(function (p) { return '<img src="' + p.img + '" alt="' + esc(p.name) + '" style="width:100%;border-radius:10px" loading="lazy">'; }).join('') + '</div></div>';
@@ -686,9 +716,12 @@
       b.classList.add('out');
       setTimeout(function () { b.remove(); done(); }, 520);
     }
-    b.querySelector('.boot-skip').addEventListener('click', function () { SFX.enable(true); finish(); });
-    addEventListener('keydown', function k() { SFX.enable(true); SFX.gbBoot(); removeEventListener('keydown', k); setTimeout(finish, 500); }, { once: true });
-    b.addEventListener('click', function () { SFX.enable(true); SFX.gbBoot(); setTimeout(finish, 500); });
+    /* Browsers refuse to play audio before a user gesture, so the boot waits
+       for one. That is also what PRESS START always meant. */
+    function start() { SFX.enable(true); SFX.gbBoot(); setTimeout(finish, 620); }
+    b.querySelector('.boot-skip').addEventListener('click', function (e) { e.stopPropagation(); finish(); });
+    addEventListener('keydown', function k() { removeEventListener('keydown', k); start(); }, { once: true });
+    b.addEventListener('click', start);
 
     logo.style.transition = 'transform 1.2s cubic-bezier(.33,0,.2,1)';
     requestAnimationFrame(function () { logo.style.transform = 'translateY(0)'; });
@@ -698,7 +731,9 @@
       setTimeout(function () { logo.style.transform = 'translateY(0)'; }, 160);
       sub.style.transition = 'opacity .4s ease'; sub.style.opacity = '1';
     }, 1220);
-    setTimeout(finish, 4200);
+    /* No auto-advance: without a press there is no sound, and the chime is
+       half the point. The Skip link is there for anyone who disagrees. */
+    setTimeout(function () { sub.classList.add('nudge'); }, 5000);
   }
 
   /* ================================================================ INIT */

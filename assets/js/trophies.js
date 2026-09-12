@@ -19,8 +19,17 @@ window.TROPHY = (function () {
     { id: 'recruiter',  icon: '🤝', name: 'The Good Ending',        desc: 'Opened the contact section. Jashan is available Summer 2027.' }
   ];
 
+  /* Bumping this wipes everyone's progress once. Used when the unlock rules
+     changed and old saves were full of trophies nobody actually earned. */
+  var SAVE_VERSION = '2';
   var got = {};
-  try { got = JSON.parse(localStorage.getItem('jm-trophies') || '{}'); } catch (e) { got = {}; }
+  try {
+    if (localStorage.getItem('jm-trophy-v') !== SAVE_VERSION) {
+      localStorage.removeItem('jm-trophies');
+      localStorage.setItem('jm-trophy-v', SAVE_VERSION);
+    }
+    got = JSON.parse(localStorage.getItem('jm-trophies') || '{}');
+  } catch (e) { got = {}; }
 
   var host = null;
   function mount() {
