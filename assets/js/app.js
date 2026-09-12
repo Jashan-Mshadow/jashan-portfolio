@@ -45,9 +45,12 @@
       document.querySelectorAll('[data-resume]').forEach(function (n) { n.hidden = false; });
     }).catch(function () {});
   })();
+  /* Visibility is decided when the button renders, not once at page load --
+     modes render long after the HEAD request resolves, and the old version
+     left every later-rendered button stuck hidden. */
   function resumeBtn(cls) {
     return '<a class="' + cls + '" data-resume href="' + (S.resume || '#') +
-           '" download hidden>Download resume (PDF)</a>';
+           '" download' + (resumeOK ? '' : ' hidden') + '>Download resume (PDF)</a>';
   }
 
   /* ============================================================ TROPHIES */
@@ -705,6 +708,7 @@
       }).join('') + '</div></section>' +
       '<section><h2>Contact</h2><div class="pl-contact"><p>' + esc(S.contact.line) + '</p><div class="pl-links">' +
         '<a class="pl-btn primary" href="mailto:' + S.contact.email + '">Email me</a>' +
+        resumeBtn('pl-btn') +
         '<a class="pl-btn" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
         '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
       '</div></div></section><footer>Built by hand · Waterloo, Ontario</footer>';
