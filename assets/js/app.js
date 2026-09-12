@@ -109,6 +109,35 @@
     document.getElementById('panic').classList.remove('open');
   });
 
+  /* ============================================================== RAMMY */
+  var rmHost = null, rmTimer = null;
+  function rammyMount(onClick) {
+    rammyKill();
+    rmHost = document.createElement('div');
+    rmHost.id = 'rammy';
+    rmHost.innerHTML = '<div class="bub" id="rmBub"></div>' +
+      '<button class="pup" type="button" aria-label="Ask Rammy">' + RAMMY.full(64) + '</button>';
+    document.body.appendChild(rmHost);
+    rmHost.querySelector('.pup').addEventListener('click', function () {
+      SFX.pick();
+      rammySay(onClick ? onClick() : RAMMY.say('idle'));
+    });
+    rmTimer = setInterval(function () { rammySay(RAMMY.say('idle')); }, 26000);
+    setTimeout(function () { rammySay(RAMMY.say('menu')); }, 1200);
+  }
+  function rammySay(txt) {
+    if (!rmHost) return;
+    var b = rmHost.querySelector('#rmBub');
+    b.textContent = txt; b.classList.add('show');
+    clearTimeout(b._t); b._t = setTimeout(function () { b.classList.remove('show'); }, 5600);
+  }
+  function rammyKill() {
+    if (rmTimer) clearInterval(rmTimer);
+    if (rmHost) rmHost.remove();
+    rmHost = null; rmTimer = null;
+  }
+  document.querySelectorAll('.joycon').forEach(function (j) { j.classList.remove('in'); });
+
   /* ========================================================= MODE SWITCH */
   var pickedAt = Date.now();
   function setMode(id) {
@@ -116,6 +145,8 @@
     if (Object.keys(visited).length >= MODES.length) T.unlock('wars');
     if (id === 'plain' && Date.now() - pickedAt < 3000) T.unlock('boring');
     try { localStorage.setItem('jm-mode', id); } catch (e) {}
+    rammyKill();
+    document.querySelectorAll('.joycon').forEach(function (j) { j.classList.remove('in'); });
     picker.classList.add('hide');
     sysBtn.classList.remove('hide');
     clear(stage);
@@ -123,28 +154,51 @@
     ({ gb: renderGB, ps: renderPS, sw: renderSW, tm: renderTM, plain: renderPlain }[id])();
     window.scrollTo(0, 0);
   }
-  function showPicker() { sysBtn.classList.add('hide'); stage.classList.add('hide'); picker.classList.remove('hide'); }
+  function showPicker() { rammyKill(); sysBtn.classList.add('hide'); stage.classList.add('hide'); picker.classList.remove('hide'); }
 
   /* =========================================================== GAME BOY */
   function renderGB() {
     var w = el('div', 'gbm');
     w.innerHTML =
-      '<div><div class="gb-shell">' +
-        '<div class="gb-brand"><span>JASHAN-OS</span><span>DOT MATRIX WITH STEREO SOUND</span></div>' +
-        '<div class="gb-win"><div class="gb-lcd"><div class="gb-inner" id="lcd"></div>' +
-        '<div class="gb-foot" id="lcdFoot"></div></div></div>' +
-        '<div class="gb-pad"><div class="dpad">' +
-          '<button class="sp" tabindex="-1"></button><button data-k="up">▲</button><button class="sp" tabindex="-1"></button>' +
-          '<button data-k="left">◀</button><button class="mid" tabindex="-1"></button><button data-k="right">▶</button>' +
-          '<button class="sp" tabindex="-1"></button><button data-k="down">▼</button><button class="sp" tabindex="-1"></button>' +
-        '</div><div class="gb-ab"><button data-k="b">B</button><button data-k="a">A</button></div></div>' +
-        '<div class="gb-se"><button data-k="b">SELECT</button><button data-k="a">START</button></div>' +
-      '</div>' +
-      '<p class="gb-hint">D-pad or arrow keys · A / Enter selects · B / Backspace goes back</p>' +
-      '<p class="gb-cart">Cartridge contacts dirty? <button id="blow" type="button">Try blowing on it.</button></p></div>';
+      '<div class="gbm-split">' +
+        '<div class="gb-side"><div class="gb-shell">' +
+          '<div class="gb-cartridge" id="cart"></div>' +
+          '<div class="gb-sliders">' +
+            '<div class="gb-sl"><label>CONTRAST</label><input id="con" type="range" min="60" max="180" value="100"></div>' +
+            '<div class="gb-sl"><label>VOLUME</label><input id="vol" type="range" min="0" max="100" value="85"></div>' +
+          '</div>' +
+          '<div class="gb-brand"><span>JASHAN-OS</span><span>DOT MATRIX WITH STEREO SOUND</span></div>' +
+          '<div class="gb-win"><div class="gb-lcd" id="lcdBox"><div class="gb-inner" id="lcd"></div>' +
+          '<div class="gb-foot" id="lcdFoot"></div></div></div>' +
+          '<div class="gb-pad"><div class="dpad">' +
+            '<button class="sp" tabindex="-1"></button><button data-k="up">\u25B2</button><button class="sp" tabindex="-1"></button>' +
+            '<button data-k="left">\u25C0</button><button class="mid" tabindex="-1"></button><button data-k="right">\u25B6</button>' +
+            '<button class="sp" tabindex="-1"></button><button data-k="down">\u25BC</button><button class="sp" tabindex="-1"></button>' +
+          '</div><div class="gb-ab"><button data-k="b">B</button><button data-k="a">A</button></div></div>' +
+          '<div class="gb-se"><button data-k="b">SELECT</button><button data-k="a">START</button></div>' +
+        '</div>' +
+        '<p class="gb-hint">Arrow keys move \u00b7 Enter selects \u00b7 Backspace goes back \u00b7 Escape swaps console</p>' +
+        '<p class="gb-cart">Cartridge contacts dirty? <button id="blow" type="button">Hold to blow the dust out.</button></p></div>' +
+
+        '<div class="gb-display">' +
+          '<div class="gb-display-bar"><span class="dot"></span><span id="dispTitle">NO SIGNAL</span></div>' +
+          '<div class="gb-screen-in" id="disp"><div class="gb-idle">SELECT A PROJECT ON THE CONSOLE<br>TO PLAY ITS FOOTAGE HERE</div></div>' +
+          '<div class="gb-display-info" id="dispInfo"></div>' +
+        '</div>' +
+      '</div>';
     stage.appendChild(w);
 
-    var lcd = w.querySelector('#lcd'), foot = w.querySelector('#lcdFoot');
+    var lcd = w.querySelector('#lcd'), foot = w.querySelector('#lcdFoot'),
+        lcdBox = w.querySelector('#lcdBox'), cart = w.querySelector('#cart'),
+        disp = w.querySelector('#disp'), dispTitle = w.querySelector('#dispTitle'),
+        dispInfo = w.querySelector('#dispInfo');
+
+    /* hardware sliders, both actually wired to something */
+    w.querySelector('#con').addEventListener('input', function () {
+      lcdBox.style.setProperty('--lcd-con', (this.value / 100).toFixed(2));
+      lcdBox.style.setProperty('--lcd-bri', (0.72 + this.value / 240).toFixed(2));
+    });
+    w.querySelector('#vol').addEventListener('input', function () { SFX.volume(this.value / 100); SFX.move(); });
     w.querySelector('#blow').addEventListener('click', function () {
       T.unlock('cartridge'); SFX.back();
       this.textContent = 'Somehow that worked. It never actually did.';
@@ -153,7 +207,6 @@
     var MENU = [['NEW GAME','about'],['SELECT PROJECT','projects'],['MEMORY CARD','skills'],
                 ['TROPHY CASE','trophies'],['TRANSMIT','contact']];
     var screen = 'menu', sel = 0, open = 0, typer = null;
-
     function stopType() { if (typer) { clearTimeout(typer); typer = null; } }
     w._stop = stopType;
 
@@ -164,8 +217,26 @@
       (function step() {
         if (i >= text.length) { typer = null; return; }
         node.textContent += text.charAt(i++);
-        typer = setTimeout(step, 12);
+        typer = setTimeout(step, 11);
       })();
+    }
+
+    /* the big screen next to the console */
+    function project(p) {
+      dispTitle.textContent = p.full.toUpperCase();
+      disp.innerHTML = p.video
+        ? '<video src="' + p.video + '" poster="' + p.img + '" controls autoplay muted loop playsinline></video>'
+        : '<img src="' + p.img + '" alt="' + esc(p.full) + '">';
+      dispInfo.innerHTML = '<h3>' + esc(p.full) + '</h3><p>' + esc(p.hook) + '</p>' +
+        '<p style="margin-top:9px">' + esc(p.lesson) + '</p>' +
+        '<div class="chips">' + p.parts.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') +
+        '</div><div class="chips" style="margin-top:11px"><a class="pl-btn" href="' + p.repo +
+        '" target="_blank" rel="noopener">View code</a></div>';
+      markProject(p.id);
+      cart.classList.add('in');
+      lcdBox.classList.add('gb-glitch');
+      setTimeout(function () { lcdBox.classList.remove('gb-glitch'); }, 320);
+      setTimeout(function () { cart.classList.remove('in'); }, 900);
     }
 
     function list(title, rows, hint) {
@@ -177,21 +248,12 @@
         box.appendChild(el('div', 'gb-row' + (i === sel ? ' sel' : ''), (i === sel ? '\u25B6 ' : '  ') + r));
       });
       lcd.appendChild(box);
+      /* Rammy, as an 8-bit sprite living on the LCD */
+      var rm = el('div'); rm.style.cssText = 'display:flex;align-items:center;gap:6px;color:#0f380f;margin-top:6px';
+      rm.innerHTML = RAMMY.pixel(30) + '<span style="font-size:10.5px;line-height:1.3">' + esc(RAMMY.say(screen === 'projects' ? 'projects' : 'menu')) + '</span>';
+      lcd.appendChild(rm);
       foot.textContent = hint || 'A = SELECT';
-      var s = box.querySelector('.sel'); if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' });
-    }
-
-    function detail(p) {
-      stopType(); lcd.innerHTML = '';
-      lcd.appendChild(el('h3', null, p.name.toUpperCase()));
-      lcd.appendChild(el('div', 'rule'));
-      var img = document.createElement('img');
-      img.className = 'gb-art'; img.src = p.img; img.alt = '';
-      lcd.appendChild(img);
-      var t = el('div', 'gb-type'); lcd.appendChild(t);
-      type(t, p.hook + '\n\n' + p.lesson + '\n\n' + p.parts.join(' · '));
-      foot.textContent = 'B = BACK';
-      markProject(p.id);
+      var sv = box.querySelector('.sel'); if (sv && sv.scrollIntoView) sv.scrollIntoView({ block: 'nearest' });
     }
 
     function page(title, lines) {
@@ -205,26 +267,23 @@
 
     function draw() {
       if (screen === 'menu')          list('JASHAN-OS', MENU.map(function (m) { return m[0]; }));
-      else if (screen === 'projects') list('SELECT PROJECT', S.projects.map(function (p) { return p.name.toUpperCase(); }), 'A = OPEN  B = BACK');
-      else if (screen === 'project')  detail(S.projects[open]);
+      else if (screen === 'projects') list('SELECT PROJECT', S.projects.map(function (p) { return p.name.toUpperCase(); }), 'A = LOAD CART  B = BACK');
+      else if (screen === 'project')  { var p = S.projects[open]; page(p.name.toUpperCase(), [p.hook, p.lesson, p.parts.join(' \u00b7 ')]); project(p); }
       else if (screen === 'about')    page('NEW GAME', [S.thesis, S.thesis2, S.fleet]);
-      else if (screen === 'skills')   page('MEMORY CARD', S.skills.map(function (s) { return s[0].toUpperCase() + ':\n' + s[1].join(', '); }));
-      else if (screen === 'trophies') {
-        page('TROPHY CASE', [T.count() + ' / ' + T.total() + ' UNLOCKED'].concat(
+      else if (screen === 'skills')   page('MEMORY CARD', S.skills.map(function (x) { return x[0].toUpperCase() + ':\n' + x[1].join(', '); }));
+      else if (screen === 'trophies') page('TROPHY CASE', [T.count() + ' / ' + T.total() + ' UNLOCKED'].concat(
           T.all().map(function (t) { return (T.has(t.id) ? '\u2605 ' : '\u2606 ') + t.name.toUpperCase() + (T.has(t.id) ? '\n   ' + t.desc : '\n   ???'); })));
-      }
       else if (screen === 'contact')  { T.unlock('recruiter'); page('TRANSMIT', [S.contact.line, S.contact.email, 'linkedin.com/in/jashanmultani', 'github.com/Jashan-Mshadow']); }
     }
 
     function key(k) {
       var len = screen === 'menu' ? MENU.length : (screen === 'projects' ? S.projects.length : 0);
-      if ((k === 'up' || k === 'down') && len) {
-        sel = k === 'up' ? (sel - 1 + len) % len : (sel + 1) % len; SFX.move();
-      }
+      if ((k === 'up' || k === 'down') && len) { sel = k === 'up' ? (sel - 1 + len) % len : (sel + 1) % len; SFX.move(); }
       if (k === 'a') {
         SFX.pick();
         if (screen === 'menu') { screen = MENU[sel][1]; sel = 0; }
         else if (screen === 'projects') { open = sel; screen = 'project'; }
+        else if (screen === 'project') { open = (open + 1) % S.projects.length; }
       }
       if (k === 'b') {
         SFX.back();
@@ -233,12 +292,12 @@
       }
       draw();
     }
-    w.querySelectorAll('[data-k]').forEach(function (b) { b.addEventListener('click', function () { key(b.dataset.k); }); });
+    w.querySelectorAll('[data-k]').forEach(function (bt) { bt.addEventListener('click', function () { key(bt.dataset.k); }); });
     var km = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right' };
     w._keys = function (e) {
       if (sysMenu.classList.contains('open')) return;
       if (km[e.key]) { e.preventDefault(); key(km[e.key]); }
-      else if (e.key === 'Enter') key('a');
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); key('a'); }
       else if (e.key === 'Backspace') { e.preventDefault(); key('b'); }
     };
     addEventListener('keydown', w._keys);
@@ -272,7 +331,7 @@
     function games() {
       var p = S.projects[sel]; glow(sel); markProject(p.id);
       main.innerHTML =
-        '<div class="ps-hero"><div class="ps-art">' +
+        '<div class="ps-hero"><div class="ps-art"><span class="spec"></span>' +
           (p.video ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="metadata"></video>'
                    : '<img src="' + p.img + '" alt="">') +
         '</div><div class="ps-info">' +
@@ -307,6 +366,7 @@
     }
     function draw() {
       drawTabs();
+      if (tab === 'contact') T.unlock('recruiter');
       if (tab === 'games') games();
       else if (tab === 'trophy') trophyRoom();
       else if (tab === 'about') simple('About', '<p>' + esc(S.thesis) + '</p><p>' + esc(S.thesis2) + '</p><p class="lesson">' + esc(S.fleet) + '</p>' +
@@ -315,7 +375,7 @@
         return '<span class="ps-badge">' + esc(j.when) + ' · ' + esc(j.where) + '</span><h2 style="font-size:20px">' + esc(j.org) +
                '</h2><p style="color:#7FC7FF">' + esc(j.role) + '</p>' + j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
       }).join('<hr style="border:0;border-top:1px solid #24405C;margin:22px 0">'));
-      else { T.unlock('recruiter'); simple('Party', '<p>' + esc(S.contact.line) + '</p><div class="ps-actions">' +
+      else { simple('Party', '<p>' + esc(S.contact.line) + '</p><div class="ps-actions">' +
         '<a class="ps-btn" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
         '<a class="ps-btn ghost" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
         '<a class="ps-btn ghost" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a></div>'); }
@@ -326,13 +386,32 @@
       if (e.key === 'ArrowLeft')  { e.preventDefault(); SFX.psMove(); sel = (sel - 1 + S.projects.length) % S.projects.length; draw(); }
     };
     addEventListener('keydown', w._keys);
+
+    /* mouse-tracked tilt + specular sweep across the hero art */
+    if (!reduce && matchMedia('(hover: hover)').matches) {
+      w.addEventListener('mousemove', function (e) {
+        var art = w.querySelector('.ps-art'); if (!art) return;
+        var r = art.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        if (x < -0.3 || x > 1.3 || y < -0.3 || y > 1.3) { art.style.transform = ''; return; }
+        art.style.transform = 'perspective(1100px) rotateX(' + (-(y - 0.5) * 5).toFixed(2) +
+                              'deg) rotateY(' + ((x - 0.5) * 6).toFixed(2) + 'deg)';
+        var sp = art.querySelector('.spec');
+        if (sp) { sp.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+                  sp.style.setProperty('--my', (y * 100).toFixed(1) + '%'); }
+      });
+    }
+
     SFX.psBoot(); draw();
+    rammyMount(function () {
+      return tab === 'games' ? RAMMY.forProject(S.projects[sel]) : RAMMY.say(tab === 'contact' ? 'contact' : 'idle');
+    });
   }
 
   /* ============================================================== SWITCH */
-  var AVATARS = [['🤖','Robot'],['🚀','Astronaut'],['⚡','Voltage'],['🐉','Dragon']];
+  var AVATARS = [['RAMMY','Rammy'],['🚀','Astronaut'],['⚡','Voltage'],['🐉','Dragon']];
   function renderSW() {
-    var w = el('div', 'swm'), sel = 0, view = 'games', me = null;
+    var w = el('div', 'swm'), sel = 0, view = 'games', me = null, docked = false;
     stage.appendChild(w);
 
     function profiles() {
@@ -340,15 +419,25 @@
       var pl = w.querySelector('#pl');
       AVATARS.forEach(function (a, i) {
         var b = el('button', 'sw-p'); b.type = 'button';
-        b.innerHTML = '<span class="av" style="background:' + ['#E4000F','#00A0E9','#F5B700','#7B2FF7'][i] + '">' + a[0] + '</span><span>' + a[1] + '</span>';
-        b.addEventListener('click', function () { SFX.swBoot(); me = a; home(); });
+        var face = a[0] === 'RAMMY' ? RAMMY.full(58) : a[0];
+        b.innerHTML = '<span class="av" style="background:' + ['#1D6E52','#00A0E9','#F5B700','#7B2FF7'][i] + '">' + face + '</span><span>' + a[1] + '</span>';
+        b.addEventListener('click', function () {
+          SFX.swBoot(); me = a; home();
+          document.querySelectorAll('.joycon').forEach(function (j, k) {
+            setTimeout(function () { j.classList.add('in'); SFX.swClick(); }, 90 + k * 130);
+          });
+          rammyMount(function () { return view === 'games' ? RAMMY.forProject(S.projects[sel]) : RAMMY.say('idle'); });
+        });
         pl.appendChild(b);
       });
     }
 
     function home() {
       w.innerHTML =
-        '<div class="sw-top"><div class="sw-av">' + me[0] + '</div><div>' + esc(S.name) + ' · ' + esc(S.role) + '</div>' +
+        '<div class="sw-top"><div class="sw-av">' + (me[0] === 'RAMMY' ? RAMMY.full(26) : me[0]) + '</div>' +
+        '<div>' + esc(S.name) + ' · ' + esc(S.role) + '</div>' +
+        '<div class="sw-mode-toggle"><button type="button" data-dock="0" aria-pressed="true">Handheld</button>' +
+        '<button type="button" data-dock="1" aria-pressed="false">Docked</button></div>' +
         '<div class="sw-status"><span>' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
         '</span><span class="sw-batt"><i></i></span></div></div>' +
         '<div class="sw-body"><div class="sw-strip" id="strip"></div><div id="det"></div></div>' +
@@ -367,12 +456,20 @@
         dock.appendChild(b);
       });
       strip.classList.toggle('hide', view !== 'games');
+      strip.classList.toggle('docked', !!docked);
+      w.querySelectorAll('[data-dock]').forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(!!docked === (btn.dataset.dock === '1')));
+        btn.onclick = function () { SFX.swClick(); docked = btn.dataset.dock === '1'; draw(); };
+      });
       if (view === 'games') {
         strip.innerHTML = '';
         S.projects.forEach(function (p, i) {
           var b = el('button', 'sw-tile'); b.type = 'button';
           b.setAttribute('aria-current', String(i === sel));
-          b.innerHTML = '<span class="sq"><img src="' + p.img + '" alt=""></span><span>' + esc(p.name) + '</span>';
+          var stars = '\u2605'.repeat(4 + (i % 2)) + '\u2606'.repeat(1 - (i % 2));
+          b.innerHTML = '<span class="sq"><img src="' + p.img + '" alt=""></span><span>' + esc(p.name) + '</span>' +
+            '<span class="sw-stars">' + stars + '</span>' +
+            '<span class="sw-price' + (p.repo ? ' os' : '') + '">' + (p.repo ? 'OPEN SOURCE' : 'FREE') + '</span>';
           b.addEventListener('click', function () { SFX.swClick(); sel = i; draw(); });
           strip.appendChild(b);
         });
@@ -428,9 +525,9 @@
 
     function w_(t, cls) { var d = el('div', cls); d.textContent = t; out.appendChild(d); out.scrollTop = out.scrollHeight; }
     function boot() {
-      var lines = ['JashanOS v2.6.0 (armv7e-m)','', 'RAM test 640K ......... OK',
+      var lines = RAMMY.ascii.split('\n').concat(['', 'JashanOS v2.6.0 (armv7e-m)','', 'RAM test 640K ......... OK',
         'Flash  512K ......... OK','UART0 baud 115200 .... OK','Peripherals .......... OK','',
-        'Type `help` for commands.',''];
+        'Type `help` for commands.','']);
       var i = 0;
       (function step() {
         if (i >= lines.length) return;
@@ -555,8 +652,27 @@
         '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
       '</div></div></section><footer>Built by hand · Waterloo, Ontario</footer>';
     stage.appendChild(w);
-    S.projects.forEach(function (p) { markProject(p.id); });
-    T.unlock('recruiter');
+
+    /* Trophies must be earned, not handed over on render. Cards count only
+       once they've actually been scrolled into view. */
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          var i = [].indexOf.call(e.target.parentNode.children, e.target);
+          if (S.projects[i]) markProject(S.projects[i].id);
+          io.unobserve(e.target);
+        });
+      }, { threshold: 0.55 });
+      w.querySelectorAll('.pl-card').forEach(function (c) { io.observe(c); });
+      var contact = w.querySelector('.pl-contact');
+      if (contact) {
+        var io2 = new IntersectionObserver(function (es) {
+          if (es[0].isIntersecting) { T.unlock('recruiter'); io2.disconnect(); }
+        }, { threshold: 0.5 });
+        io2.observe(contact);
+      }
+    }
   }
 
   /* ================================================================ BOOT */
@@ -593,10 +709,7 @@
     e.preventDefault(); clear(stage); showPicker();
   });
 
-  var saved = null; try { saved = localStorage.getItem('jm-mode'); } catch (e) {}
-  boot(function () {
-    pickedAt = Date.now();
-    if (saved && MODES.some(function (m) { return m.id === saved; })) setMode(saved);
-    else showPicker();
-  });
+  /* Always land on the picker. Remembering the last console meant returning
+     visitors never saw the choice, which is the best part of the site. */
+  boot(function () { pickedAt = Date.now(); showPicker(); });
 })();

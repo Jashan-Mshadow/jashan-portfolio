@@ -4,7 +4,7 @@
  * Audio stays silent until the first user gesture, per browser policy.
  * ========================================================================= */
 window.SFX = (function () {
-  var ctx = null, on = true, started = 0;
+  var ctx = null, on = true, started = 0, master = 0.85;
 
   function ac() {
     if (!ctx) {
@@ -25,7 +25,7 @@ window.SFX = (function () {
     o.type = type || 'square';
     o.frequency.setValueAtTime(freq, t);
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vol == null ? 0.06 : vol, t + 0.012);
+    g.gain.linearRampToValueAtTime((vol == null ? 0.06 : vol) * master, t + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(c.destination);
     o.start(t); o.stop(t + dur + 0.02);
@@ -39,7 +39,7 @@ window.SFX = (function () {
     o.type = type || 'sine';
     o.frequency.setValueAtTime(f1, t);
     o.frequency.exponentialRampToValueAtTime(f2, t + dur);
-    g.gain.setValueAtTime(vol == null ? 0.08 : vol, t);
+    g.gain.setValueAtTime((vol == null ? 0.08 : vol) * master, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(c.destination);
     o.start(t); o.stop(t + dur + 0.02);
@@ -47,6 +47,8 @@ window.SFX = (function () {
 
   return {
     enable:  function (v) { on = v; if (v) ac(); },
+    volume:  function (v) { master = Math.max(0, Math.min(1, v)); },
+    getVolume: function () { return master; },
     enabled: function () { return on; },
     heldMs:  function () { return started ? Date.now() - started : 0; },
 

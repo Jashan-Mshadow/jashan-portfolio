@@ -395,3 +395,105 @@ a{color:inherit}
 .art-tm i{width:62px;height:40px;border:1px solid #1F4A26;border-radius:4px;display:block;
   background:repeating-linear-gradient(180deg,rgba(74,224,106,.5) 0 1px,transparent 1px 5px);
   box-shadow:0 0 18px rgba(74,224,106,.25)}
+
+/* ===================== v3 — Rammy, split GB, eShop, Joy-Cons ============ */
+
+/* ------------------------------------------------------------- RAMMY */
+.rm-eye{animation:rmBlink 4.2s infinite}
+@keyframes rmBlink{0%,93%,100%{opacity:1}96%{opacity:.15}}
+.rm-tail{animation:rmWag 1.1s ease-in-out infinite;transform-origin:52px 30px}
+@keyframes rmWag{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(14deg)}}
+.rm-tongue{animation:rmPant 1.6s ease-in-out infinite}
+@keyframes rmPant{0%,100%{transform:translateY(0)}50%{transform:translateY(1.4px)}}
+
+#rammy{position:fixed;right:22px;bottom:22px;z-index:840;display:flex;align-items:flex-end;gap:10px}
+#rammy .bub{
+  max-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:13px 13px 3px 13px;
+  padding:10px 13px;font-size:13px;line-height:1.42;box-shadow:0 12px 34px rgba(0,0,0,.5);
+  opacity:0;transform:translateY(8px);transition:opacity .3s,transform .35s cubic-bezier(.2,1.2,.4,1);
+}
+#rammy .bub.show{opacity:1;transform:none}
+#rammy .pup{background:none;border:0;padding:0;filter:drop-shadow(0 8px 18px rgba(0,0,0,.5));transition:transform .22s cubic-bezier(.3,1.5,.5,1)}
+#rammy .pup:hover{transform:translateY(-5px) scale(1.07)}
+@media (max-width:600px){ #rammy{right:12px;bottom:12px} #rammy .bub{max-width:160px;font-size:12px} }
+
+/* ------------------------------------- GAME BOY: split console + screen */
+.gbm-split{display:grid;gap:30px;width:min(1160px,100%);align-items:start}
+@media (min-width:1020px){ .gbm-split{grid-template-columns:420px minmax(0,1fr)} }
+.gb-side{display:flex;flex-direction:column;align-items:center}
+.gb-shell{position:relative}
+.gb-sliders{position:absolute;left:-16px;top:64px;display:flex;flex-direction:column;gap:20px;align-items:center}
+.gb-sl{display:flex;flex-direction:column;align-items:center;gap:5px}
+.gb-sl label{font-family:var(--mono);font-size:7.5px;letter-spacing:.14em;color:#5A5750;writing-mode:vertical-rl}
+.gb-sl input[type=range]{
+  -webkit-appearance:none;appearance:none;width:62px;height:5px;background:#6E6B64;border-radius:3px;
+  transform:rotate(90deg);transform-origin:center;margin:26px -12px;
+}
+.gb-sl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:19px;border-radius:3px;background:#3A382F;cursor:pointer}
+.gb-sl input[type=range]::-moz-range-thumb{width:13px;height:19px;border-radius:3px;background:#3A382F;border:0;cursor:pointer}
+
+/* the cartridge that slides into the slot on select */
+.gb-cartridge{
+  position:absolute;top:-54px;left:50%;transform:translateX(-50%) translateY(-40px);
+  width:120px;height:52px;background:#8E8B84;border:2px solid #5A5750;border-radius:5px 5px 2px 2px;
+  opacity:0;transition:transform .34s cubic-bezier(.4,1.4,.5,1),opacity .2s;z-index:-1;
+}
+.gb-cartridge::after{content:"";position:absolute;left:14px;right:14px;top:10px;height:22px;background:#C9C6BE;border-radius:2px}
+.gb-cartridge.in{opacity:1;transform:translateX(-50%) translateY(24px)}
+.gb-lcd{filter:contrast(var(--lcd-con,1)) brightness(var(--lcd-bri,1))}
+.gb-glitch{animation:gbGlitch .3s steps(3)}
+@keyframes gbGlitch{0%{filter:contrast(3) brightness(1.7)}50%{filter:invert(1)}100%{filter:none}}
+
+/* the big display beside the console */
+.gb-display{
+  background:#0C100C;border:1px solid #1E2A1E;border-radius:16px;overflow:hidden;
+  box-shadow:0 26px 60px rgba(0,0,0,.6);position:relative;
+}
+.gb-display-bar{
+  display:flex;align-items:center;gap:9px;padding:10px 15px;background:#111A11;border-bottom:1px solid #1E2A1E;
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#5E8A5E;
+}
+.gb-display-bar .dot{width:7px;height:7px;border-radius:50%;background:#7BD67B;box-shadow:0 0 9px #7BD67B}
+.gb-screen-in{aspect-ratio:16/10;background:#070A07;display:grid;place-items:center;position:relative;overflow:hidden}
+.gb-screen-in img,.gb-screen-in video{width:100%;height:100%;object-fit:contain;background:#070A07}
+.gb-screen-in::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);
+}
+.gb-display-info{padding:17px 19px;border-top:1px solid #1E2A1E}
+.gb-display-info h3{font-family:var(--display);font-size:18px;margin:0 0 5px;letter-spacing:-.015em;color:#D8E8D8}
+.gb-display-info p{margin:0;font-size:14px;color:#7E9A7E;line-height:1.5}
+.gb-display-info .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px}
+.gb-display-info .chips span{font-family:var(--mono);font-size:10px;background:rgba(123,214,123,.11);color:#8FCF8F;padding:3px 8px;border-radius:5px}
+.gb-idle{color:#3E5A3E;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-align:center;padding:40px}
+
+/* ------------------------------------------- PS5: parallax + specular */
+.ps-tile{position:relative}
+.ps-art{position:relative;transform-style:preserve-3d;transition:transform .18s ease-out}
+.ps-art .spec{
+  position:absolute;inset:0;pointer-events:none;border-radius:12px;opacity:0;transition:opacity .25s;
+  background:radial-gradient(circle 220px at var(--mx,50%) var(--my,50%),rgba(255,255,255,.22),transparent 60%);
+}
+.ps-art:hover .spec{opacity:1}
+
+/* --------------------------------------- SWITCH: joy-cons + eShop */
+.joycon{position:fixed;top:0;bottom:0;width:54px;z-index:830;pointer-events:none;transition:transform .55s cubic-bezier(.2,1.1,.3,1)}
+.joycon.l{left:0;background:linear-gradient(180deg,#E4000F,#A80009);border-radius:0 14px 14px 0;transform:translateX(-100%)}
+.joycon.r{right:0;background:linear-gradient(180deg,#00A0E9,#0070A8);border-radius:14px 0 0 14px;transform:translateX(100%)}
+.joycon.in{transform:translateX(0)}
+.joycon i{position:absolute;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.22)}
+.joycon.l i{top:22%}.joycon.r i{top:30%}
+@media (max-width:1100px){ .joycon{display:none} }
+
+.sw-mode-toggle{display:flex;gap:0;border:1px solid #4A4A4A;border-radius:999px;overflow:hidden;margin-left:14px}
+.sw-mode-toggle button{background:none;border:0;color:#9A9A9A;font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;padding:6px 13px}
+.sw-mode-toggle button[aria-pressed="true"]{background:#fff;color:#1A1A1A;font-weight:600}
+.sw-strip.docked{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;overflow:visible}
+.sw-strip.docked .sw-tile,.sw-strip.docked .sw-tile .sq{width:100%}
+.sw-strip.docked .sw-tile .sq{height:auto;aspect-ratio:16/10}
+.sw-strip.docked .sw-tile[aria-current="true"] .sq{box-shadow:0 0 0 4px #E4000F,0 0 34px rgba(228,0,15,.4);transform:none;border-color:transparent}
+.sw-price{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
+  background:#E4000F;color:#fff;padding:2px 7px;border-radius:4px;margin-top:6px}
+.sw-price.os{background:#00A0E9}
+.sw-stars{color:#F5B700;font-size:11px;letter-spacing:1px;display:block;margin-top:4px}
