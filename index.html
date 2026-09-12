@@ -12,61 +12,78 @@
 </head>
 <body>
 
-<!-- ============================ BOOT ============================ -->
 <div id="boot">
   <div class="boot-lcd">
-    <div class="boot-logo">JASHAN MULTANI</div>
-    <div class="boot-sub">PRESS ANY KEY</div>
+    <div class="boot-logo">JASHAN-OS</div>
+    <div class="boot-sub">&copy; 2026 JASHAN MULTANI &middot; PRESS START</div>
   </div>
   <button class="boot-skip" type="button">Skip</button>
 </div>
 
-<!-- ======================== MODE SWITCHER ======================= -->
-<div id="modeSwitch" class="hide" aria-label="Choose interface"></div>
+<button id="sysBtn" class="hide" type="button">SYS_MENU</button>
 
-<!-- ========================= MODE PICKER ======================== -->
+<div id="sysMenu">
+  <div class="in">
+    <h2>Change hardware</h2>
+    <p>Same portfolio, five interfaces. Escape opens this any time.</p>
+    <div class="sys-grid"></div>
+    <button class="sys-close" type="button">Close</button>
+  </div>
+</div>
+
+<div id="panic">
+  <h2>KERNEL PANIC</h2>
+  <p class="dim">/dev/portfolio &mdash; unrecoverable nostalgia fault</p>
+  <pre class="dump"></pre>
+  <button id="panicClose" type="button">Reboot and pretend this never happened</button>
+</div>
+
 <main id="picker" class="hide">
   <div class="picker-in">
     <h1>Pick your console</h1>
-    <p class="lede">Same portfolio, four interfaces. I built a Game Boy because a list of projects is
+    <p class="lede">Same portfolio, five interfaces. I built a Game Boy because a list of projects is
       boring &mdash; but there's a normal website in here too if you're in a hurry.</p>
 
     <div class="picker-grid">
       <button class="pick" type="button" data-mode="gb">
         <span class="pick-art art-gb"><i></i></span>
         <span class="pick-meta"><strong>Game Boy</strong>
-          <span>Green LCD, D-pad navigation, one menu at a time. The full experience.</span></span>
+          <span>Four-shade LCD, working D-pad, typed-out text. The full experience.</span></span>
       </button>
-
       <button class="pick" type="button" data-mode="ps">
         <span class="pick-art art-ps"><i></i></span>
         <span class="pick-meta"><strong>PlayStation</strong>
-          <span>Big cover art, a project rail, and a hero panel. Arrow keys move the rail.</span></span>
+          <span>Cover art, ambient glow that shifts per project, and a trophy room.</span></span>
       </button>
-
       <button class="pick" type="button" data-mode="sw">
         <span class="pick-art art-sw"><i></i></span>
         <span class="pick-meta"><strong>Switch</strong>
-          <span>Square tiles and a dock along the bottom. Quick to skim.</span></span>
+          <span>Pick a profile, then tiles and a bottom dock. Quick to skim.</span></span>
       </button>
-
+      <button class="pick" type="button" data-mode="tm">
+        <span class="pick-art art-tm"><i></i></span>
+        <span class="pick-meta"><strong>Terminal</strong>
+          <span>A real shell with real commands. Type <code>help</code>. Firmware people, this one's yours.</span></span>
+      </button>
       <button class="pick" type="button" data-mode="plain">
         <span class="pick-art art-plain"><i></i></span>
         <span class="pick-meta"><strong>Boring mode</strong>
-          <span>An ordinary scrolling website. No games, no boot screen. Recruiters, start here.</span></span>
+          <span>An ordinary scrolling website. No games. Recruiters, start here.</span></span>
       </button>
     </div>
 
     <p class="lede" style="margin:34px auto 0;font-size:14px">
-      Switch consoles any time from the corner &mdash;
-      <a href="#" id="pickAgain">or come back to this screen</a>.
+      Switch hardware any time with <b>SYS_MENU</b> or <b>Escape</b> &mdash;
+      <a href="#" id="pickAgain">or come back here</a>.
+      There's a Konami code hidden somewhere.
     </p>
   </div>
 </main>
 
-<!-- ============================ STAGE =========================== -->
 <div id="stage" class="hide"></div>
 
+<script src="assets/js/sfx.js"></script>
+<script src="assets/js/trophies.js"></script>
 <script src="assets/js/content.js"></script>
 <script src="assets/js/app.js"></script>
 </body>

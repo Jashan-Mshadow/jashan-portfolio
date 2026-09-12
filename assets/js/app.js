@@ -1,505 +1,602 @@
 /* ===========================================================================
- * app.js — boot sequence, console picker, and four renderers over content.js.
+ * app.js — five consoles over one content model.
  *
- * The idea: content lives in exactly one place (window.SITE) and each mode is
- * a function that turns it into a different interface. Adding a console means
- * adding a renderer, not duplicating content.
+ * content.js holds every fact exactly once. Each mode is a renderer. Adding
+ * a console means writing one function, not duplicating content.
  * ========================================================================= */
 (function () {
   'use strict';
 
-  var S = window.SITE;
+  var S = window.SITE, T = window.TROPHY;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var stage  = document.getElementById('stage');
   var picker = document.getElementById('picker');
+  var seenProjects = {};
 
-  var el = function (tag, cls, txt) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (txt != null) n.textContent = txt;
-    return n;
-  };
-  // **bold** -> <b>bold</b>, and nothing else. Content is ours, not user input.
-  var md = function (s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-  };
-  var clear = function (n) { while (n.firstChild) n.removeChild(n.firstChild); };
+  var el = function (t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
+  var esc = function (s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  var md  = function (s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); };
 
-  /* ======================================================= MODE SWITCHER */
+  function clear(n) {
+    if (n === stage) [].slice.call(n.children).forEach(function (c) {
+      if (c._keys) removeEventListener('keydown', c._keys);
+      if (c._stop) c._stop();
+    });
+    while (n.firstChild) n.removeChild(n.firstChild);
+  }
+
   var MODES = [
-    { id: 'gb',    label: 'Game Boy' },
-    { id: 'ps',    label: 'PlayStation' },
-    { id: 'sw',    label: 'Switch' },
-    { id: 'plain', label: 'Boring' }
+    { id: 'gb',    label: 'Game Boy',    art: 'art-gb',    blurb: 'Green LCD, D-pad, one screen at a time.' },
+    { id: 'ps',    label: 'PlayStation', art: 'art-ps',    blurb: 'Cover art, ambient glow, a trophy room.' },
+    { id: 'sw',    label: 'Switch',      art: 'art-sw',    blurb: 'Profile select, tiles, bottom dock.' },
+    { id: 'tm',    label: 'Terminal',    art: 'art-tm',    blurb: 'A real shell. Type help.' },
+    { id: 'plain', label: 'Boring',      art: 'art-plain', blurb: 'An ordinary website. Recruiters, start here.' }
   ];
-  var current = null;
-  var switcher = document.getElementById('modeSwitch');
+  var current = null, visited = {};
 
-  function buildSwitcher() {
-    clear(switcher);
+  /* ============================================================ TROPHIES */
+  function markProject(id) {
+    if (seenProjects[id]) return;
+    seenProjects[id] = Date.now();
+    var n = Object.keys(seenProjects).length;
+    if (n >= 3) T.unlock('baremetal');
+    if (n >= S.projects.length) T.unlock('complete');
+    setTimeout(function () {
+      // still on the same project a minute later? they're actually reading.
+      if (seenProjects[id] && Date.now() - seenProjects[id] >= 59000) T.unlock('reader');
+    }, 60000);
+  }
+  setInterval(function () {
+    if (SFX.enabled() && SFX.heldMs() > 120000) T.unlock('sound');
+  }, 10000);
+  if (new Date().getHours() < 5) T.unlock('night');
+
+  /* ============================================================ SYS MENU */
+  var sysBtn  = document.getElementById('sysBtn');
+  var sysMenu = document.getElementById('sysMenu');
+  function buildSys() {
+    var g = sysMenu.querySelector('.sys-grid');
+    g.innerHTML = '';
     MODES.forEach(function (m) {
-      var b = el('button', null, m.label);
+      var b = el('button', 'pick');
       b.type = 'button';
-      b.setAttribute('aria-pressed', String(current === m.id));
-      b.addEventListener('click', function () { setMode(m.id); });
-      switcher.appendChild(b);
+      b.innerHTML = '<span class="pick-art ' + m.art + '"><i></i></span>' +
+        '<span class="pick-meta"><strong>' + m.label + (current === m.id ? ' ·' : '') +
+        '</strong><span>' + m.blurb + '</span></span>';
+      b.addEventListener('click', function () { closeSys(); setMode(m.id); });
+      g.appendChild(b);
     });
   }
+  function openSys()  { buildSys(); sysMenu.classList.add('open'); }
+  function closeSys() { sysMenu.classList.remove('open'); }
+  sysBtn.addEventListener('click', function () { SFX.swClick(); sysMenu.classList.contains('open') ? closeSys() : openSys(); });
+  sysMenu.querySelector('.sys-close').addEventListener('click', closeSys);
 
-  function setMode(id) {
-    current = id;
-    try { localStorage.setItem('jm-mode', id); } catch (e) {}
-    picker.classList.add('hide');
-    switcher.classList.remove('hide');
-    buildSwitcher();
-    clear(stage);
-    stage.classList.remove('hide');
-    ({ gb: renderGB, ps: renderPS, sw: renderSW, plain: renderPlain }[id])();
-    window.scrollTo(0, 0);
+  /* ============================================================== KONAMI */
+  var KON = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  var kbuf = [];
+  addEventListener('keydown', function (e) {
+    kbuf.push(e.key.length === 1 ? e.key.toLowerCase() : e.key);
+    if (kbuf.length > KON.length) kbuf.shift();
+    if (kbuf.join(',') === KON.join(',')) { kbuf = []; panic(); }
+    if (e.key === 'Escape') { sysMenu.classList.contains('open') ? closeSys() : openSys(); }
+  });
+  function panic() {
+    T.unlock('konami'); SFX.panic();
+    var p = document.getElementById('panic');
+    p.classList.add('open');
+    var out = p.querySelector('.dump');
+    var lines = [
+      'kernel: [  0.000000] PANIC: unexpected input on /dev/portfolio',
+      'kernel: [  0.000031] CPU0: overclocked beyond tasteful limits',
+      'kernel: [  0.000058] stack trace:',
+      'kernel: [  0.000061]   konami_handler+0x1f/0x40',
+      'kernel: [  0.000074]   nostalgia_overflow+0xb8/0x100',
+      'kernel: [  0.000090]   jashan_show_off+0x2c/0x60',
+      'kernel: [  0.000112] hardware: popsicle sticks, hot glue, hope',
+      'kernel: [  0.000140] one (1) trophy awarded as compensation',
+      'kernel: [  0.000180] system halted. you did this.'
+    ];
+    out.textContent = '';
+    var i = 0;
+    (function step() {
+      if (i >= lines.length) return;
+      out.textContent += lines[i++] + '\n';
+      setTimeout(step, reduce ? 0 : 130);
+    })();
   }
-
-  /* ============================================================ THE BOOT */
-  function boot(done) {
-    var b = document.getElementById('boot');
-    if (reduce) { b.remove(); done(); return; }
-
-    var logo = b.querySelector('.boot-logo');
-    var sub  = b.querySelector('.boot-sub');
-    var fired = false;
-    var finish = function () {
-      if (fired) return; fired = true;
-      b.classList.add('out');
-      setTimeout(function () { b.remove(); done(); }, 520);
-    };
-    b.querySelector('.boot-skip').addEventListener('click', finish);
-    addEventListener('keydown', finish, { once: true });
-
-    // The Game Boy boot: logo slides down, lands, then the subtitle appears.
-    logo.style.transition = 'transform 1.15s cubic-bezier(.33,0,.2,1)';
-    requestAnimationFrame(function () { logo.style.transform = 'translateY(0)'; });
-    setTimeout(function () {
-      logo.style.transition = 'transform .16s ease';
-      logo.style.transform = 'translateY(-6px)';
-      setTimeout(function () { logo.style.transform = 'translateY(0)'; }, 160);
-      sub.style.transition = 'opacity .4s ease';
-      sub.style.opacity = '1';
-    }, 1180);
-    setTimeout(finish, 2500);
-  }
-
-  /* ========================================================== THE PICKER */
-  function showPicker() {
-    switcher.classList.add('hide');
-    stage.classList.add('hide');
-    picker.classList.remove('hide');
-  }
-  picker.querySelectorAll('[data-mode]').forEach(function (b) {
-    b.addEventListener('click', function () { setMode(b.dataset.mode); });
+  document.getElementById('panicClose').addEventListener('click', function () {
+    document.getElementById('panic').classList.remove('open');
   });
 
-  /* ======================================================= GAME BOY MODE */
+  /* ========================================================= MODE SWITCH */
+  var pickedAt = Date.now();
+  function setMode(id) {
+    current = id; visited[id] = 1;
+    if (Object.keys(visited).length >= MODES.length) T.unlock('wars');
+    if (id === 'plain' && Date.now() - pickedAt < 3000) T.unlock('boring');
+    try { localStorage.setItem('jm-mode', id); } catch (e) {}
+    picker.classList.add('hide');
+    sysBtn.classList.remove('hide');
+    clear(stage);
+    stage.classList.remove('hide');
+    ({ gb: renderGB, ps: renderPS, sw: renderSW, tm: renderTM, plain: renderPlain }[id])();
+    window.scrollTo(0, 0);
+  }
+  function showPicker() { sysBtn.classList.add('hide'); stage.classList.add('hide'); picker.classList.remove('hide'); }
+
+  /* =========================================================== GAME BOY */
   function renderGB() {
-    var wrap = el('div', 'gbm');
-    wrap.innerHTML =
-      '<div>' +
-        '<div class="gb-shell">' +
-          '<div class="gb-brand"><span>JM-BOY</span><span>DOT MATRIX WITH STEREO SOUND</span></div>' +
-          '<div class="gb-win"><div class="gb-lcd"><div class="gb-scroll" id="lcd"></div>' +
-            '<div class="gb-foot" id="lcdFoot"></div></div></div>' +
-          '<div class="gb-pad">' +
-            '<div class="dpad">' +
-              '<button class="sp" tabindex="-1"></button><button data-k="up">▲</button><button class="sp" tabindex="-1"></button>' +
-              '<button data-k="left">◀</button><button class="mid" tabindex="-1"></button><button data-k="right">▶</button>' +
-              '<button class="sp" tabindex="-1"></button><button data-k="down">▼</button><button class="sp" tabindex="-1"></button>' +
-            '</div>' +
-            '<div class="gb-ab"><button data-k="b">B</button><button data-k="a">A</button></div>' +
-          '</div>' +
-          '<div class="gb-se"><button data-k="b">SELECT</button><button data-k="a">START</button></div>' +
-        '</div>' +
-        '<p class="gb-hint">D-pad or arrow keys · A / Enter to select · B to go back</p>' +
-      '</div>';
-    stage.appendChild(wrap);
+    var w = el('div', 'gbm');
+    w.innerHTML =
+      '<div><div class="gb-shell">' +
+        '<div class="gb-brand"><span>JASHAN-OS</span><span>DOT MATRIX WITH STEREO SOUND</span></div>' +
+        '<div class="gb-win"><div class="gb-lcd"><div class="gb-inner" id="lcd"></div>' +
+        '<div class="gb-foot" id="lcdFoot"></div></div></div>' +
+        '<div class="gb-pad"><div class="dpad">' +
+          '<button class="sp" tabindex="-1"></button><button data-k="up">▲</button><button class="sp" tabindex="-1"></button>' +
+          '<button data-k="left">◀</button><button class="mid" tabindex="-1"></button><button data-k="right">▶</button>' +
+          '<button class="sp" tabindex="-1"></button><button data-k="down">▼</button><button class="sp" tabindex="-1"></button>' +
+        '</div><div class="gb-ab"><button data-k="b">B</button><button data-k="a">A</button></div></div>' +
+        '<div class="gb-se"><button data-k="b">SELECT</button><button data-k="a">START</button></div>' +
+      '</div>' +
+      '<p class="gb-hint">D-pad or arrow keys · A / Enter selects · B / Backspace goes back</p>' +
+      '<p class="gb-cart">Cartridge contacts dirty? <button id="blow" type="button">Try blowing on it.</button></p></div>';
+    stage.appendChild(w);
 
-    var lcd  = wrap.querySelector('#lcd');
-    var foot = wrap.querySelector('#lcdFoot');
+    var lcd = w.querySelector('#lcd'), foot = w.querySelector('#lcdFoot');
+    w.querySelector('#blow').addEventListener('click', function () {
+      T.unlock('cartridge'); SFX.back();
+      this.textContent = 'Somehow that worked. It never actually did.';
+    });
 
-    var MENU = [
-      ['PROJECTS',   'projects'],
-      ['ABOUT ME',   'about'],
-      ['EXPERIENCE', 'experience'],
-      ['TOOLKIT',    'skills'],
-      ['SIGNALS',    'interests'],
-      ['CONTACT',    'contact']
-    ];
-    var screen = 'menu', sel = 0, back = null;
+    var MENU = [['NEW GAME','about'],['SELECT PROJECT','projects'],['MEMORY CARD','skills'],
+                ['TROPHY CASE','trophies'],['TRANSMIT','contact']];
+    var screen = 'menu', sel = 0, open = 0, typer = null;
 
-    function list(title, rows, hint) {
-      clear(lcd);
-      lcd.appendChild(el('h3', null, title));
-      lcd.appendChild(el('div', 'rule'));
-      rows.forEach(function (r, i) {
-        lcd.appendChild(el('div', 'gb-row' + (i === sel ? ' sel' : ''), (i === sel ? '▸ ' : '  ') + r));
-      });
-      foot.textContent = hint || 'A = SELECT';
-      var s = lcd.querySelector('.sel');
-      if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' });
+    function stopType() { if (typer) { clearTimeout(typer); typer = null; } }
+    w._stop = stopType;
+
+    function type(node, text) {
+      stopType();
+      if (reduce) { node.textContent = text; return; }
+      node.textContent = ''; var i = 0;
+      (function step() {
+        if (i >= text.length) { typer = null; return; }
+        node.textContent += text.charAt(i++);
+        typer = setTimeout(step, 12);
+      })();
     }
 
-    function page(title, lines, hint) {
-      clear(lcd);
+    function list(title, rows, hint) {
+      stopType(); lcd.innerHTML = '';
       lcd.appendChild(el('h3', null, title));
       lcd.appendChild(el('div', 'rule'));
-      lines.forEach(function (t) {
-        var p = el('div', null, t);
-        p.style.marginBottom = '7px';
-        lcd.appendChild(p);
+      var box = el('div'); box.style.overflowY = 'auto'; box.style.flex = '1';
+      rows.forEach(function (r, i) {
+        box.appendChild(el('div', 'gb-row' + (i === sel ? ' sel' : ''), (i === sel ? '\u25B6 ' : '  ') + r));
       });
-      foot.textContent = hint || 'B = BACK';
+      lcd.appendChild(box);
+      foot.textContent = hint || 'A = SELECT';
+      var s = box.querySelector('.sel'); if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' });
+    }
+
+    function detail(p) {
+      stopType(); lcd.innerHTML = '';
+      lcd.appendChild(el('h3', null, p.name.toUpperCase()));
+      lcd.appendChild(el('div', 'rule'));
+      var img = document.createElement('img');
+      img.className = 'gb-art'; img.src = p.img; img.alt = '';
+      lcd.appendChild(img);
+      var t = el('div', 'gb-type'); lcd.appendChild(t);
+      type(t, p.hook + '\n\n' + p.lesson + '\n\n' + p.parts.join(' · '));
+      foot.textContent = 'B = BACK';
+      markProject(p.id);
+    }
+
+    function page(title, lines) {
+      stopType(); lcd.innerHTML = '';
+      lcd.appendChild(el('h3', null, title));
+      lcd.appendChild(el('div', 'rule'));
+      var t = el('div', 'gb-type'); lcd.appendChild(t);
+      type(t, lines.join('\n\n'));
+      foot.textContent = 'B = BACK';
     }
 
     function draw() {
-      if (screen === 'menu') {
-        list('JASHAN MULTANI', MENU.map(function (m) { return m[0]; }), 'A = SELECT');
-      } else if (screen === 'projects') {
-        list('PROJECTS', S.projects.map(function (p) { return p.name.toUpperCase(); }), 'A = OPEN  B = BACK');
-      } else if (screen === 'project') {
-        var p = S.projects[back];
-        page(p.name.toUpperCase(), [p.hook, p.body, '> ' + p.lesson, p.parts.join(' · ')], 'B = BACK');
-      } else if (screen === 'about') {
-        page('ABOUT ME', [S.thesis, S.thesis2, S.fleet]);
-      } else if (screen === 'experience') {
-        var lines = [];
-        S.experience.forEach(function (j) {
-          lines.push(j.org.toUpperCase() + ' — ' + j.when);
-          lines.push(j.role);
-          j.bullets.forEach(function (b) { lines.push('· ' + b.replace(/\*\*/g, '')); });
-        });
-        page('EXPERIENCE', lines);
-      } else if (screen === 'skills') {
-        page('TOOLKIT', S.skills.map(function (s) { return s[0].toUpperCase() + ': ' + s[1].join(', '); }));
-      } else if (screen === 'interests') {
-        page('SIGNALS', S.interests.map(function (i) { return i[0].toUpperCase() + ' — ' + i[1]; }));
-      } else if (screen === 'contact') {
-        page('CONTACT', [S.contact.line, S.contact.email, 'linkedin.com/in/jashanmultani', 'github.com/Jashan-Mshadow']);
+      if (screen === 'menu')          list('JASHAN-OS', MENU.map(function (m) { return m[0]; }));
+      else if (screen === 'projects') list('SELECT PROJECT', S.projects.map(function (p) { return p.name.toUpperCase(); }), 'A = OPEN  B = BACK');
+      else if (screen === 'project')  detail(S.projects[open]);
+      else if (screen === 'about')    page('NEW GAME', [S.thesis, S.thesis2, S.fleet]);
+      else if (screen === 'skills')   page('MEMORY CARD', S.skills.map(function (s) { return s[0].toUpperCase() + ':\n' + s[1].join(', '); }));
+      else if (screen === 'trophies') {
+        page('TROPHY CASE', [T.count() + ' / ' + T.total() + ' UNLOCKED'].concat(
+          T.all().map(function (t) { return (T.has(t.id) ? '\u2605 ' : '\u2606 ') + t.name.toUpperCase() + (T.has(t.id) ? '\n   ' + t.desc : '\n   ???'); })));
       }
+      else if (screen === 'contact')  { T.unlock('recruiter'); page('TRANSMIT', [S.contact.line, S.contact.email, 'linkedin.com/in/jashanmultani', 'github.com/Jashan-Mshadow']); }
     }
 
     function key(k) {
       var len = screen === 'menu' ? MENU.length : (screen === 'projects' ? S.projects.length : 0);
-      if (k === 'up'   && len) { sel = (sel - 1 + len) % len; }
-      if (k === 'down' && len) { sel = (sel + 1) % len; }
+      if ((k === 'up' || k === 'down') && len) {
+        sel = k === 'up' ? (sel - 1 + len) % len : (sel + 1) % len; SFX.move();
+      }
       if (k === 'a') {
-        if (screen === 'menu')          { screen = MENU[sel][1]; sel = 0; }
-        else if (screen === 'projects') { back = sel; screen = 'project'; }
+        SFX.pick();
+        if (screen === 'menu') { screen = MENU[sel][1]; sel = 0; }
+        else if (screen === 'projects') { open = sel; screen = 'project'; }
       }
       if (k === 'b') {
-        if (screen === 'project')      { screen = 'projects'; sel = back || 0; }
-        else if (screen !== 'menu')    { screen = 'menu'; sel = 0; }
+        SFX.back();
+        if (screen === 'project') { screen = 'projects'; sel = open; }
+        else if (screen !== 'menu') { screen = 'menu'; sel = 0; }
       }
       draw();
     }
-
-    wrap.querySelectorAll('[data-k]').forEach(function (b) {
-      b.addEventListener('click', function () { key(b.dataset.k); });
-    });
-    var kmap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
-    wrap._keys = function (e) {
-      if (kmap[e.key]) { e.preventDefault(); key(kmap[e.key]); }
-      else if (e.key === 'Enter' || e.key === 'a' || e.key === 'A') key('a');
-      else if (e.key === 'Backspace' || e.key === 'b' || e.key === 'B') { e.preventDefault(); key('b'); }
+    w.querySelectorAll('[data-k]').forEach(function (b) { b.addEventListener('click', function () { key(b.dataset.k); }); });
+    var km = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right' };
+    w._keys = function (e) {
+      if (sysMenu.classList.contains('open')) return;
+      if (km[e.key]) { e.preventDefault(); key(km[e.key]); }
+      else if (e.key === 'Enter') key('a');
+      else if (e.key === 'Backspace') { e.preventDefault(); key('b'); }
     };
-    addEventListener('keydown', wrap._keys);
+    addEventListener('keydown', w._keys);
     draw();
   }
 
-  /* ===================================================== PLAYSTATION MODE */
+  /* ========================================================= PLAYSTATION */
+  var PS_GLOW = ['#2E6FB8','#B85C2E','#6B3FB8','#2EB894','#B82E5C','#B8A22E','#2E93B8','#8AB82E','#B8722E'];
   function renderPS() {
-    var wrap = el('div', 'psm');
-    var sel = 0, tab = 'games';
+    var w = el('div', 'psm'), sel = 0, tab = 'games';
+    w.innerHTML = '<div class="ps-amb" id="amb"></div>' +
+      '<div class="ps-top"><div class="ps-av">JM</div><div><strong>' + S.name + '</strong><span>' + S.role + '</span></div></div>' +
+      '<div class="ps-tabs" id="psTabs"></div><div id="psMain"></div>';
+    stage.appendChild(w);
+    var tabs = w.querySelector('#psTabs'), main = w.querySelector('#psMain'), amb = w.querySelector('#amb');
+    var TABS = [['games','Media Gallery'],['about','About'],['work','Experience'],['trophy','Trophy Room'],['contact','Party']];
 
-    wrap.innerHTML =
-      '<div class="ps-top">' +
-        '<div class="ps-av">JM</div>' +
-        '<div><strong>' + S.name + '</strong><span>' + S.role + '</span></div>' +
-      '</div>' +
-      '<div class="ps-tabs" id="psTabs"></div>' +
-      '<div id="psMain"></div>';
-    stage.appendChild(wrap);
-
-    var tabs = wrap.querySelector('#psTabs');
-    var main = wrap.querySelector('#psMain');
-    var TABS = [['games', 'Projects'], ['about', 'About'], ['work', 'Experience'], ['contact', 'Contact']];
-
+    function glow(i) {
+      var c = PS_GLOW[i % PS_GLOW.length];
+      amb.style.background = 'radial-gradient(ellipse 70% 50% at 30% 12%,' + c + '55,transparent 70%)';
+    }
     function drawTabs() {
-      clear(tabs);
+      tabs.innerHTML = '';
       TABS.forEach(function (t) {
-        var b = el('button', null, t[1]);
-        b.type = 'button';
+        var b = el('button', null, t[1]); b.type = 'button';
         b.setAttribute('aria-pressed', String(tab === t[0]));
-        b.addEventListener('click', function () { tab = t[0]; draw(); });
+        b.addEventListener('click', function () { SFX.psMove(); tab = t[0]; draw(); });
         tabs.appendChild(b);
       });
     }
-
-    function drawGames() {
-      var p = S.projects[sel];
-      var media = p.video
-        ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="none"></video>'
-        : '<img src="' + p.img + '" alt="' + p.full + '">';
+    function games() {
+      var p = S.projects[sel]; glow(sel); markProject(p.id);
       main.innerHTML =
-        '<div class="ps-hero">' +
-          '<div class="ps-art">' + media + '</div>' +
-          '<div class="ps-info">' +
-            '<span class="ps-badge">' + p.status + ' · ' + p.year + '</span>' +
-            '<h2>' + p.full + '</h2>' +
-            '<p>' + p.hook + '</p>' +
-            '<p>' + p.body + '</p>' +
-            '<p class="lesson">' + p.lesson + '</p>' +
-            '<div class="ps-actions">' +
-              '<a class="ps-btn" href="' + p.repo + '" target="_blank" rel="noopener">View code</a>' +
-              '<a class="ps-btn ghost" href="#" data-next>Next project</a>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="ps-rail"><div class="ps-strip" id="psStrip"></div></div>';
-
-      var strip = main.querySelector('#psStrip');
+        '<div class="ps-hero"><div class="ps-art">' +
+          (p.video ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="metadata"></video>'
+                   : '<img src="' + p.img + '" alt="">') +
+        '</div><div class="ps-info">' +
+          '<span class="ps-badge">' + esc(p.status) + ' · ' + esc(p.year) + '</span>' +
+          '<h2>' + esc(p.full) + '</h2><p>' + esc(p.hook) + '</p><p>' + esc(p.body) + '</p>' +
+          '<p class="lesson">' + esc(p.lesson) + '</p>' +
+          '<div class="ps-actions"><a class="ps-btn" href="' + p.repo + '" target="_blank" rel="noopener">View code</a>' +
+          '<button class="ps-btn ghost" id="nx" type="button">Next</button></div>' +
+        '</div></div><div class="ps-rail"><div class="ps-strip" id="strip"></div></div>';
+      var strip = main.querySelector('#strip');
       S.projects.forEach(function (q, i) {
-        var b = el('button', 'ps-tile');
-        b.type = 'button';
+        var b = el('button', 'ps-tile'); b.type = 'button';
         b.setAttribute('aria-current', String(i === sel));
-        b.innerHTML = '<img src="' + q.img + '" alt=""><span>' + q.name + '</span>';
-        b.addEventListener('click', function () { sel = i; draw(); });
+        b.innerHTML = '<img src="' + q.img + '" alt=""><span>' + esc(q.name) + '</span>';
+        b.addEventListener('click', function () { SFX.psMove(); sel = i; draw(); });
         strip.appendChild(b);
       });
-      var nx = main.querySelector('[data-next]');
-      if (nx) nx.addEventListener('click', function (e) {
-        e.preventDefault(); sel = (sel + 1) % S.projects.length; draw();
-      });
-      var cur = strip.querySelector('[aria-current="true"]');
-      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
+      main.querySelector('#nx').addEventListener('click', function () { SFX.psMove(); sel = (sel + 1) % S.projects.length; draw(); });
+      var c = strip.querySelector('[aria-current="true"]'); if (c && c.scrollIntoView) c.scrollIntoView({ block:'nearest', inline:'center' });
     }
-
-    function drawAbout() {
-      main.innerHTML =
-        '<div class="ps-hero" style="grid-template-columns:1fr">' +
-          '<div class="ps-info">' +
-            '<h2>About</h2>' +
-            '<p>' + S.thesis + '</p><p>' + S.thesis2 + '</p>' +
-            '<p class="lesson">' + S.fleet + '</p>' +
-            '<div class="ps-actions">' +
-              S.interests.map(function (i) {
-                return '<span class="ps-badge" style="margin:0">' + i[0] + '</span>';
-              }).join('') +
-            '</div>' +
-            S.interests.map(function (i) { return '<p>' + i[1] + '</p>'; }).join('') +
-          '</div>' +
-        '</div>';
-    }
-
-    function drawWork() {
+    function trophyRoom() {
       main.innerHTML = '<div class="ps-hero" style="grid-template-columns:1fr"><div class="ps-info">' +
-        '<h2>Experience</h2>' +
-        S.experience.map(function (j) {
-          return '<span class="ps-badge">' + j.when + ' · ' + j.where + '</span>' +
-                 '<h2 style="font-size:20px">' + j.org + '</h2>' +
-                 '<p style="color:#7FC7FF">' + j.role + '</p>' +
-                 j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
-        }).join('<hr style="border:0;border-top:1px solid #24405C;margin:22px 0">') +
-        '</div></div>';
+        '<h2>Trophy Room</h2><p>' + T.count() + ' of ' + T.total() + ' unlocked. Some are hiding in other consoles.</p>' +
+        '<div class="ps-trophies">' + T.all().map(function (t) {
+          var has = T.has(t.id);
+          return '<div class="ps-tr' + (has ? '' : ' locked') + '"><span class="ico">' + t.icon + '</span><span>' +
+                 '<b>' + esc(has ? t.name : '???') + '</b><small>' + esc(has ? t.desc : 'Locked.') + '</small></span></div>';
+        }).join('') + '</div></div></div>';
     }
-
-    function drawContact() {
-      main.innerHTML = '<div class="ps-hero" style="grid-template-columns:1fr"><div class="ps-info">' +
-        '<h2>Contact</h2><p>' + S.contact.line + '</p>' +
-        '<div class="ps-actions">' +
-          '<a class="ps-btn" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
-          '<a class="ps-btn ghost" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
-          '<a class="ps-btn ghost" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
-        '</div></div></div>';
+    function simple(title, html) {
+      main.innerHTML = '<div class="ps-hero" style="grid-template-columns:1fr"><div class="ps-info"><h2>' + title + '</h2>' + html + '</div></div>';
     }
-
     function draw() {
       drawTabs();
-      ({ games: drawGames, about: drawAbout, work: drawWork, contact: drawContact }[tab])();
+      if (tab === 'games') games();
+      else if (tab === 'trophy') trophyRoom();
+      else if (tab === 'about') simple('About', '<p>' + esc(S.thesis) + '</p><p>' + esc(S.thesis2) + '</p><p class="lesson">' + esc(S.fleet) + '</p>' +
+        S.interests.map(function (i) { return '<p><b>' + esc(i[0]) + '</b> — ' + esc(i[1]) + '</p>'; }).join(''));
+      else if (tab === 'work') simple('Experience', S.experience.map(function (j) {
+        return '<span class="ps-badge">' + esc(j.when) + ' · ' + esc(j.where) + '</span><h2 style="font-size:20px">' + esc(j.org) +
+               '</h2><p style="color:#7FC7FF">' + esc(j.role) + '</p>' + j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
+      }).join('<hr style="border:0;border-top:1px solid #24405C;margin:22px 0">'));
+      else { T.unlock('recruiter'); simple('Party', '<p>' + esc(S.contact.line) + '</p><div class="ps-actions">' +
+        '<a class="ps-btn" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
+        '<a class="ps-btn ghost" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
+        '<a class="ps-btn ghost" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a></div>'); }
     }
-
-    wrap._keys = function (e) {
-      if (tab !== 'games') return;
-      if (e.key === 'ArrowRight') { e.preventDefault(); sel = (sel + 1) % S.projects.length; draw(); }
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); sel = (sel - 1 + S.projects.length) % S.projects.length; draw(); }
+    w._keys = function (e) {
+      if (tab !== 'games' || sysMenu.classList.contains('open')) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); SFX.psMove(); sel = (sel + 1) % S.projects.length; draw(); }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); SFX.psMove(); sel = (sel - 1 + S.projects.length) % S.projects.length; draw(); }
     };
-    addEventListener('keydown', wrap._keys);
-    draw();
+    addEventListener('keydown', w._keys);
+    SFX.psBoot(); draw();
   }
 
-  /* ========================================================= SWITCH MODE */
+  /* ============================================================== SWITCH */
+  var AVATARS = [['🤖','Robot'],['🚀','Astronaut'],['⚡','Voltage'],['🐉','Dragon']];
   function renderSW() {
-    var wrap = el('div', 'swm');
-    var sel = 0, view = 'games';
+    var w = el('div', 'swm'), sel = 0, view = 'games', me = null;
+    stage.appendChild(w);
 
-    wrap.innerHTML =
-      '<div class="sw-top"><div class="sw-av">J</div><div>' + S.name + ' · ' + S.role + '</div></div>' +
-      '<div class="sw-body"><div class="sw-strip" id="swStrip"></div><div id="swDetail"></div></div>' +
-      '<div class="sw-dock"><div class="sw-dock-in" id="swDock"></div></div>';
-    stage.appendChild(wrap);
+    function profiles() {
+      w.innerHTML = '<div class="sw-profiles"><div><h2>Who\'s playing?</h2><div class="sw-plist" id="pl"></div></div></div>';
+      var pl = w.querySelector('#pl');
+      AVATARS.forEach(function (a, i) {
+        var b = el('button', 'sw-p'); b.type = 'button';
+        b.innerHTML = '<span class="av" style="background:' + ['#E4000F','#00A0E9','#F5B700','#7B2FF7'][i] + '">' + a[0] + '</span><span>' + a[1] + '</span>';
+        b.addEventListener('click', function () { SFX.swBoot(); me = a; home(); });
+        pl.appendChild(b);
+      });
+    }
 
-    var strip  = wrap.querySelector('#swStrip');
-    var detail = wrap.querySelector('#swDetail');
-    var dock   = wrap.querySelector('#swDock');
-    var DOCK = [['games', 'Projects'], ['about', 'About'], ['work', 'Experience'], ['skills', 'Toolkit'], ['contact', 'Contact']];
+    function home() {
+      w.innerHTML =
+        '<div class="sw-top"><div class="sw-av">' + me[0] + '</div><div>' + esc(S.name) + ' · ' + esc(S.role) + '</div>' +
+        '<div class="sw-status"><span>' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
+        '</span><span class="sw-batt"><i></i></span></div></div>' +
+        '<div class="sw-body"><div class="sw-strip" id="strip"></div><div id="det"></div></div>' +
+        '<div class="sw-dock"><div class="sw-dock-in" id="dock"></div></div>';
+      draw();
+    }
 
-    function drawDock() {
-      clear(dock);
+    var DOCK = [['games','🎮 Projects'],['work','🔴 News'],['skills','⚪ eShop'],['album','🔵 Album'],['settings','⚙️ Settings']];
+    function draw() {
+      var dock = w.querySelector('#dock'), strip = w.querySelector('#strip'), det = w.querySelector('#det');
+      dock.innerHTML = '';
       DOCK.forEach(function (d) {
-        var b = el('button', null, d[1]);
-        b.type = 'button';
+        var b = el('button', null, d[1]); b.type = 'button';
         b.setAttribute('aria-pressed', String(view === d[0]));
-        b.addEventListener('click', function () { view = d[0]; draw(); });
+        b.addEventListener('click', function () { SFX.swClick(); view = d[0]; draw(); });
         dock.appendChild(b);
       });
-    }
-
-    function drawStrip() {
       strip.classList.toggle('hide', view !== 'games');
-      if (view !== 'games') return;
-      clear(strip);
-      S.projects.forEach(function (p, i) {
-        var b = el('button', 'sw-tile');
-        b.type = 'button';
-        b.setAttribute('aria-current', String(i === sel));
-        b.innerHTML = '<span class="sq"><img src="' + p.img + '" alt=""></span><span>' + p.name + '</span>';
-        b.addEventListener('click', function () { sel = i; draw(); });
-        strip.appendChild(b);
-      });
-      var cur = strip.querySelector('[aria-current="true"]');
-      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
-    }
-
-    function drawDetail() {
       if (view === 'games') {
-        var p = S.projects[sel];
-        detail.innerHTML =
-          '<div class="sw-detail">' +
-            '<div class="yr">' + p.status + ' · ' + p.year + '</div>' +
-            '<h2>' + p.full + '</h2>' +
-            (p.video ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="none" style="border-radius:10px;margin-top:16px;max-height:420px;width:auto"></video>' : '') +
-            '<p>' + p.hook + '</p><p>' + p.body + '</p>' +
-            '<p class="lesson">' + p.lesson + '</p>' +
-            '<div class="sw-chips">' + p.parts.map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div>' +
-            '<div class="sw-chips" style="margin-top:14px"><a class="pl-btn primary" href="' + p.repo + '" target="_blank" rel="noopener">View code</a></div>' +
-          '</div>';
-      } else if (view === 'about') {
-        detail.innerHTML = '<div class="sw-detail"><h2>About</h2><p>' + S.thesis + '</p><p>' + S.thesis2 +
-          '</p><p class="lesson">' + S.fleet + '</p>' +
-          S.interests.map(function (i) { return '<p><b>' + i[0] + '</b> — ' + i[1] + '</p>'; }).join('') + '</div>';
+        strip.innerHTML = '';
+        S.projects.forEach(function (p, i) {
+          var b = el('button', 'sw-tile'); b.type = 'button';
+          b.setAttribute('aria-current', String(i === sel));
+          b.innerHTML = '<span class="sq"><img src="' + p.img + '" alt=""></span><span>' + esc(p.name) + '</span>';
+          b.addEventListener('click', function () { SFX.swClick(); sel = i; draw(); });
+          strip.appendChild(b);
+        });
+        var c = strip.querySelector('[aria-current="true"]'); if (c && c.scrollIntoView) c.scrollIntoView({ block:'nearest', inline:'center' });
+        var p = S.projects[sel]; markProject(p.id);
+        det.innerHTML = '<div class="sw-detail"><div class="yr">' + esc(p.status) + ' · ' + esc(p.year) + '</div><h2>' + esc(p.full) + '</h2>' +
+          (p.video ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="metadata" style="border-radius:10px;margin-top:16px;max-height:400px;width:auto"></video>' : '') +
+          '<p>' + esc(p.hook) + '</p><p>' + esc(p.body) + '</p><p class="lesson">' + esc(p.lesson) + '</p>' +
+          '<div class="sw-chips">' + p.parts.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div>' +
+          '<div class="sw-chips" style="margin-top:14px"><a class="pl-btn primary" href="' + p.repo + '" target="_blank" rel="noopener">View code</a></div></div>';
       } else if (view === 'work') {
-        detail.innerHTML = '<div class="sw-detail"><h2>Experience</h2>' +
-          S.experience.map(function (j) {
-            return '<div class="yr" style="margin-top:18px">' + j.when + ' · ' + j.where + '</div>' +
-                   '<h2 style="font-size:20px">' + j.org + '</h2><p style="color:#E4747E">' + j.role + '</p>' +
-                   j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
-          }).join('') + '</div>';
+        det.innerHTML = '<div class="sw-detail"><h2>News</h2>' + S.experience.map(function (j) {
+          return '<div class="yr" style="margin-top:18px">' + esc(j.when) + ' · ' + esc(j.where) + '</div><h2 style="font-size:20px">' + esc(j.org) +
+                 '</h2><p style="color:#E4747E">' + esc(j.role) + '</p>' + j.bullets.map(function (b) { return '<p>' + md(b) + '</p>'; }).join('');
+        }).join('') + '</div>';
       } else if (view === 'skills') {
-        detail.innerHTML = '<div class="sw-detail"><h2>Toolkit</h2>' +
-          S.skills.map(function (s) {
-            return '<div class="yr" style="margin-top:16px">' + s[0] + '</div>' +
-                   '<div class="sw-chips">' + s[1].map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div>';
-          }).join('') + '</div>';
+        det.innerHTML = '<div class="sw-detail"><h2>eShop</h2>' + S.skills.map(function (s) {
+          return '<div class="yr" style="margin-top:16px">' + esc(s[0]) + '</div><div class="sw-chips">' +
+                 s[1].map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div>';
+        }).join('') + '</div>';
+      } else if (view === 'album') {
+        det.innerHTML = '<div class="sw-detail"><h2>Album</h2><div class="sw-chips" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">' +
+          S.projects.map(function (p) { return '<img src="' + p.img + '" alt="' + esc(p.name) + '" style="width:100%;border-radius:10px" loading="lazy">'; }).join('') + '</div></div>';
       } else {
-        detail.innerHTML = '<div class="sw-detail"><h2>Contact</h2><p>' + S.contact.line + '</p>' +
+        T.unlock('recruiter');
+        det.innerHTML = '<div class="sw-detail"><h2>Settings</h2><p>' + esc(S.contact.line) + '</p>' +
           '<div class="sw-chips" style="margin-top:16px">' +
-            '<a class="pl-btn primary" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
-            '<a class="pl-btn" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
-            '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
-          '</div></div>';
+          '<a class="pl-btn primary" href="mailto:' + S.contact.email + '">' + S.contact.email + '</a>' +
+          '<a class="pl-btn" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
+          '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
+          '<button class="pl-btn" id="toBoring" type="button">Switch to Boring Mode</button></div>' +
+          '<p style="margin-top:18px;color:#8A8A8A;font-size:13px">Trophies: ' + T.count() + ' / ' + T.total() + '</p></div>';
+        var tb = det.querySelector('#toBoring'); if (tb) tb.addEventListener('click', function () { setMode('plain'); });
       }
     }
-
-    function draw() { drawDock(); drawStrip(); drawDetail(); }
-
-    wrap._keys = function (e) {
-      if (view !== 'games') return;
-      if (e.key === 'ArrowRight') { e.preventDefault(); sel = (sel + 1) % S.projects.length; draw(); }
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); sel = (sel - 1 + S.projects.length) % S.projects.length; draw(); }
+    w._keys = function (e) {
+      if (view !== 'games' || !me || sysMenu.classList.contains('open')) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); SFX.swClick(); sel = (sel + 1) % S.projects.length; draw(); }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); SFX.swClick(); sel = (sel - 1 + S.projects.length) % S.projects.length; draw(); }
     };
-    addEventListener('keydown', wrap._keys);
-    draw();
+    addEventListener('keydown', w._keys);
+    profiles();
   }
 
-  /* ========================================================== BORING MODE */
+  /* ============================================================ TERMINAL */
+  function renderTM() {
+    var w = el('div', 'tmm'), ran = 0;
+    w.innerHTML = '<div class="crt"><div class="crt-out" id="out"></div>' +
+      '<div class="crt-line"><span>jashan@waterloo:~$</span><input id="in" autocomplete="off" spellcheck="false" aria-label="Terminal input"></div>' +
+      '<div class="crt-tags" id="tags"></div></div>';
+    stage.appendChild(w);
+    var out = w.querySelector('#out'), inp = w.querySelector('#in'), tags = w.querySelector('#tags');
+
+    function w_(t, cls) { var d = el('div', cls); d.textContent = t; out.appendChild(d); out.scrollTop = out.scrollHeight; }
+    function boot() {
+      var lines = ['JashanOS v2.6.0 (armv7e-m)','', 'RAM test 640K ......... OK',
+        'Flash  512K ......... OK','UART0 baud 115200 .... OK','Peripherals .......... OK','',
+        'Type `help` for commands.',''];
+      var i = 0;
+      (function step() {
+        if (i >= lines.length) return;
+        w_(lines[i++], 'c2');
+        setTimeout(step, reduce ? 0 : 90);
+      })();
+    }
+
+    var CMDS = {
+      help: function () {
+        w_('Available commands:', 'c2');
+        [['cat about.txt','who I am'],['ls /projects','list every build'],
+         ['cat /projects/<name>','open one — try `cat /projects/line`'],
+         ['whoami','short version'],['uptime','how long I have been at this'],
+         ['neofetch','system info'],['trophies','achievement status'],
+         ['ping contact','how to reach me'],['clear','wipe the screen']]
+        .forEach(function (c) { w_('  ' + c[0].padEnd(26) + c[1]); });
+      },
+      whoami: function () { w_(S.name + ' — ' + S.role); w_(S.blurb, 'c2'); },
+      uptime: function () { w_('1A Computer Engineering, University of Waterloo. Building things since roughly age 12.'); },
+      neofetch: function () {
+        w_('       .--.        jashan@waterloo', 'c2');
+        w_('      |o_o |       ---------------', 'c2');
+        w_('      |:_/ |       OS: JashanOS v2.6.0', 'c2');
+        w_('     //   \\ \\      Shell: bash (pretend)', 'c2');
+        w_('    (|     | )     Focus: firmware, embedded', 'c2');
+        w_('   /\'\\_   _/`\\     Projects: ' + S.projects.length, 'c2');
+        w_('   \\___)=(___/     Seeking: Summer 2027 co-op', 'c2');
+      },
+      trophies: function () {
+        w_(T.count() + ' / ' + T.total() + ' unlocked');
+        T.all().forEach(function (t) { w_((T.has(t.id) ? '  [x] ' : '  [ ] ') + (T.has(t.id) ? t.name : '???')); });
+      },
+      clear: function () { out.innerHTML = ''; }
+    };
+
+    function run(raw) {
+      var cmd = raw.trim();
+      if (!cmd) return;
+      w_('jashan@waterloo:~$ ' + cmd, 'cmd');
+      ran++; if (ran >= 5) T.unlock('root');
+
+      if (CMDS[cmd]) { SFX.beepOk(); CMDS[cmd](); }
+      else if (cmd === 'cat about.txt') { SFX.beepOk(); w_(S.thesis); w_(''); w_(S.thesis2); w_(''); w_(S.fleet, 'c2'); }
+      else if (cmd === 'ls /projects') {
+        SFX.beepOk();
+        S.projects.forEach(function (p) { w_('  ' + p.id.padEnd(10) + p.full + '  [' + p.status + ']'); });
+        w_('', 'c2'); w_('Open one with: cat /projects/<id>', 'c2');
+      }
+      else if (cmd.indexOf('cat /projects/') === 0) {
+        var id = cmd.slice(14).replace(/\.c$|\.txt$/, '');
+        var p = S.projects.filter(function (x) { return x.id === id; })[0];
+        if (!p) { SFX.err(); w_('cat: /projects/' + id + ': No such file or directory', 'err'); }
+        else {
+          SFX.beepOk(); markProject(p.id);
+          w_('/* ' + p.full + ' — ' + p.year + ' */');
+          w_(''); w_(p.hook, 'c2'); w_(''); w_(p.body);
+          w_(''); w_('// lesson: ' + p.lesson, 'c2');
+          w_(''); w_('HARDWARE: ' + p.parts.join(', '));
+          w_('SOURCE:   ' + p.repo);
+        }
+      }
+      else if (cmd === 'ping contact') {
+        SFX.beepOk(); T.unlock('recruiter');
+        w_('PING contact (' + S.contact.email + '): 56 data bytes');
+        w_('64 bytes: icmp_seq=0 time=0.03 ms', 'c2');
+        w_('64 bytes: icmp_seq=1 time=0.02 ms', 'c2');
+        w_('--- contact ping statistics ---');
+        w_('2 packets transmitted, 2 received, 0.0% packet loss');
+        w_(''); w_('email:    ' + S.contact.email);
+        w_('linkedin: ' + S.contact.linkedin);
+        w_('github:   ' + S.contact.github);
+      }
+      else if (cmd === 'sudo hire jashan') { SFX.trophy(); w_('Permission granted. Excellent choice.', 'c2'); T.unlock('recruiter'); }
+      else if (cmd === 'exit') { w_('There is no exit. Use SYS_MENU (Escape).', 'c2'); }
+      else { SFX.err(); w_('bash: ' + cmd + ': command not found', 'err'); w_('Try `help`.', 'c2'); }
+      w_('');
+    }
+
+    ['help','cat about.txt','ls /projects','neofetch','trophies','ping contact','clear'].forEach(function (c) {
+      var b = el('button', null, c); b.type = 'button';
+      b.addEventListener('click', function () { run(c); inp.focus(); });
+      tags.appendChild(b);
+    });
+    inp.addEventListener('keydown', function (e) {
+      SFX.key();
+      if (e.key === 'Enter') { run(inp.value); inp.value = ''; }
+    });
+    w.addEventListener('click', function (e) { if (e.target.tagName !== 'BUTTON') inp.focus(); });
+    boot(); setTimeout(function () { inp.focus(); }, 400);
+  }
+
+  /* ============================================================== BORING */
   function renderPlain() {
     var w = el('div', 'plm');
     w.innerHTML =
-      '<h1>' + S.first.charAt(0) + S.first.slice(1).toLowerCase() + '<br>' +
-        S.last.charAt(0) + S.last.slice(1).toLowerCase() + '</h1>' +
-      '<p class="lede">' + S.thesis.replace('build one', '<strong>build one</strong>') + '</p>' +
-      '<p class="dim">' + S.thesis2 + '</p>' +
-      '<p class="aside">' + S.fleet + '</p>' +
-      '<dl class="pl-status">' + S.status.map(function (r) {
-        return '<div><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>';
-      }).join('') + '</dl>' +
-
+      '<h1>Jashan<br>Multani</h1>' +
+      '<p class="lede">' + esc(S.thesis).replace('build one', '<strong>build one</strong>') + '</p>' +
+      '<p class="dim">' + esc(S.thesis2) + '</p><p class="aside">' + esc(S.fleet) + '</p>' +
+      '<dl class="pl-status">' + S.status.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('') + '</dl>' +
       '<section><h2>Experience</h2>' + S.experience.map(function (j) {
-        return '<div class="pl-job"><span class="m">' + j.when + ' · ' + j.where + '</span>' +
-               '<h3>' + j.org + '</h3><span class="r">' + j.role + '</span>' +
-               '<ul>' + j.bullets.map(function (b) { return '<li>' + md(b) + '</li>'; }).join('') + '</ul></div>';
+        return '<div class="pl-job"><span class="m">' + esc(j.when) + ' · ' + esc(j.where) + '</span><h3>' + esc(j.org) +
+               '</h3><span class="r">' + esc(j.role) + '</span><ul>' + j.bullets.map(function (b) { return '<li>' + md(b) + '</li>'; }).join('') + '</ul></div>';
       }).join('') + '</section>' +
-
       '<section><h2>Things I\'ve built</h2><div class="pl-grid">' + S.projects.map(function (p) {
-        var media = p.video
-          ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="none"></video>'
-          : '<img src="' + p.img + '" alt="' + p.full + '" loading="lazy">';
-        return '<article class="pl-card"><div class="m">' + media + '</div><div class="b">' +
-               '<h3>' + p.full + '</h3><p>' + p.hook + '</p><p>' + p.body + '</p>' +
-               '<div class="pl-chips">' + p.parts.map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div>' +
-               '</div></article>';
+        return '<article class="pl-card"><div class="m">' +
+          (p.video ? '<video src="' + p.video + '" poster="' + p.img + '" controls playsinline preload="none"></video>'
+                   : '<img src="' + p.img + '" alt="' + esc(p.full) + '" loading="lazy">') +
+          '</div><div class="b"><h3>' + esc(p.full) + '</h3><p>' + esc(p.hook) + '</p><p>' + esc(p.body) + '</p>' +
+          '<div class="pl-chips">' + p.parts.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div>' +
+          '<div class="pl-chips"><a class="pl-btn" href="' + p.repo + '" target="_blank" rel="noopener">View code</a></div></div></article>';
       }).join('') + '</div></section>' +
-
       '<section><h2>Toolkit</h2><div class="pl-skills">' + S.skills.map(function (s) {
-        return '<div class="pl-skill"><h3>' + s[0] + '</h3><ul>' +
-               s[1].map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></div>';
+        return '<div class="pl-skill"><h3>' + esc(s[0]) + '</h3><ul>' + s[1].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
       }).join('') + '</div></section>' +
-
       '<section><h2>Background noise</h2><div class="pl-notes">' + S.interests.map(function (i) {
-        return '<div class="pl-note"><b>' + i[0] + '</b><p>' + i[1] + '</p></div>';
+        return '<div class="pl-note"><b>' + esc(i[0]) + '</b><p>' + esc(i[1]) + '</p></div>';
       }).join('') + '</div></section>' +
-
-      '<section><h2>Contact</h2><div class="pl-contact"><p>' + S.contact.line + '</p>' +
-        '<div class="pl-links">' +
-          '<a class="pl-btn primary" href="mailto:' + S.contact.email + '">Email me</a>' +
-          '<a class="pl-btn" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
-          '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
-        '</div></div></section>' +
-      '<footer>Built by hand · Waterloo, Ontario</footer>';
+      '<section><h2>Contact</h2><div class="pl-contact"><p>' + esc(S.contact.line) + '</p><div class="pl-links">' +
+        '<a class="pl-btn primary" href="mailto:' + S.contact.email + '">Email me</a>' +
+        '<a class="pl-btn" href="' + S.contact.linkedin + '" target="_blank" rel="noopener">LinkedIn</a>' +
+        '<a class="pl-btn" href="' + S.contact.github + '" target="_blank" rel="noopener">GitHub</a>' +
+      '</div></div></section><footer>Built by hand · Waterloo, Ontario</footer>';
     stage.appendChild(w);
+    S.projects.forEach(function (p) { markProject(p.id); });
+    T.unlock('recruiter');
   }
 
-  /* Renderers register a _keys handler on their wrapper; drop the previous
-     one whenever the stage is cleared so modes don't stack listeners. */
-  var _clear = clear;
-  clear = function (n) {
-    if (n === stage) {
-      [].slice.call(n.children).forEach(function (c) {
-        if (c._keys) removeEventListener('keydown', c._keys);
-      });
+  /* ================================================================ BOOT */
+  function boot(done) {
+    var b = document.getElementById('boot');
+    if (reduce) { b.remove(); done(); return; }
+    var logo = b.querySelector('.boot-logo'), sub = b.querySelector('.boot-sub'), fired = false;
+    function finish() {
+      if (fired) return; fired = true;
+      T.unlock('power');
+      b.classList.add('out');
+      setTimeout(function () { b.remove(); done(); }, 520);
     }
-    _clear(n);
-  };
+    b.querySelector('.boot-skip').addEventListener('click', function () { SFX.enable(true); finish(); });
+    addEventListener('keydown', function k() { SFX.enable(true); SFX.gbBoot(); removeEventListener('keydown', k); setTimeout(finish, 500); }, { once: true });
+    b.addEventListener('click', function () { SFX.enable(true); SFX.gbBoot(); setTimeout(finish, 500); });
+
+    logo.style.transition = 'transform 1.2s cubic-bezier(.33,0,.2,1)';
+    requestAnimationFrame(function () { logo.style.transform = 'translateY(0)'; });
+    setTimeout(function () {
+      logo.style.transition = 'transform .16s ease';
+      logo.style.transform = 'translateY(-7px)';
+      setTimeout(function () { logo.style.transform = 'translateY(0)'; }, 160);
+      sub.style.transition = 'opacity .4s ease'; sub.style.opacity = '1';
+    }, 1220);
+    setTimeout(finish, 4200);
+  }
 
   /* ================================================================ INIT */
-  var saved = null;
-  try { saved = localStorage.getItem('jm-mode'); } catch (e) {}
-
-  boot(function () {
-    if (saved && MODES.some(function (m) { return m.id === saved; })) setMode(saved);
-    else showPicker();
+  picker.querySelectorAll('[data-mode]').forEach(function (b) {
+    b.addEventListener('click', function () { SFX.enable(true); SFX.pick(); setMode(b.dataset.mode); });
+  });
+  document.getElementById('pickAgain').addEventListener('click', function (e) {
+    e.preventDefault(); clear(stage); showPicker();
   });
 
-  document.getElementById('pickAgain').addEventListener('click', function (e) {
-    e.preventDefault();
-    clear(stage);
-    showPicker();
+  var saved = null; try { saved = localStorage.getItem('jm-mode'); } catch (e) {}
+  boot(function () {
+    pickedAt = Date.now();
+    if (saved && MODES.some(function (m) { return m.id === saved; })) setMode(saved);
+    else showPicker();
   });
 })();
